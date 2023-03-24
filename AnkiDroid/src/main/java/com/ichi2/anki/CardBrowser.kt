@@ -59,10 +59,7 @@ import com.ichi2.anki.export.ExportType
 import com.ichi2.anki.receiver.SdCardReceiver
 import com.ichi2.anki.servicelayer.CardService.selectedNoteIds
 import com.ichi2.anki.servicelayer.NoteService.isMarked
-import com.ichi2.anki.servicelayer.SchedulerService.NextCard
-import com.ichi2.anki.servicelayer.SchedulerService.RepositionCards
-import com.ichi2.anki.servicelayer.SchedulerService.RescheduleCards
-import com.ichi2.anki.servicelayer.SchedulerService.ResetCards
+import com.ichi2.anki.servicelayer.SchedulerService.*
 import com.ichi2.anki.servicelayer.Undo
 import com.ichi2.anki.servicelayer.avgIntervalOfNote
 import com.ichi2.anki.servicelayer.totalLapsesOfNote
@@ -90,9 +87,6 @@ import net.ankiweb.rsdroid.BackendFactory
 import net.ankiweb.rsdroid.RustCleanup
 import org.json.JSONObject
 import timber.log.Timber
-import java.lang.Exception
-import java.lang.IllegalStateException
-import java.lang.StringBuilder
 import java.util.*
 import java.util.function.Consumer
 import kotlin.collections.ArrayList
@@ -447,6 +441,8 @@ open class CardBrowser :
     // TODO: This function can be simplified a lot
     @VisibleForTesting
     fun moveSelectedCardsToDeck(did: DeckId) {
+        mSearchView = null
+        mSearchTerms = ""
         val selectedDeck = col.decks.get(did)
         // TODO: Currently try-catch is at every level which isn't required, simplify that
         try {
