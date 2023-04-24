@@ -39,6 +39,7 @@ import android.widget.*
 import androidx.annotation.VisibleForTesting
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.SearchView
+import androidx.appcompat.widget.TooltipCompat
 import androidx.core.app.ActivityCompat.OnRequestPermissionsResultCallback
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
@@ -91,7 +92,6 @@ import com.ichi2.anki.servicelayer.SchedulerService.NextCard
 import com.ichi2.anki.servicelayer.ScopedStorageService.collectionWillBeMadeInaccessibleAfterUninstall
 import com.ichi2.anki.servicelayer.ScopedStorageService.isLegacyStorage
 import com.ichi2.anki.servicelayer.ScopedStorageService.userMigrationIsInProgress
-import com.ichi2.anki.servicelayer.Undo
 import com.ichi2.anki.services.MigrationService
 import com.ichi2.anki.services.withBoundTo
 import com.ichi2.anki.snackbar.showSnackbar
@@ -623,6 +623,9 @@ open class DeckPicker :
     private fun setupMigrationProgressMenuItem(menu: Menu, migrationInProgress: Boolean) {
         val migrationProgressMenuItem = menu.findItem(R.id.action_migration_progress)
             .apply { isVisible = migrationInProgress }
+
+        val imageButton = findViewById<ImageButton>(R.id.button)
+        TooltipCompat.setTooltipText(imageButton, "tooltip text")
 
         suspend fun CircularProgressIndicator.publishProgress(progress: MigrationService.Progress) {
             when (progress) {
