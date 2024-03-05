@@ -36,7 +36,7 @@ class BrowserOptionsDialog(private val cardsOrNotes: CardsOrNotes, private val i
 
     private val viewModel: CardBrowserViewModel by activityViewModels()
 
-    private val positiveButtonClick = { _: DialogInterface, _: Int ->
+    val positiveButtonClick = { _: DialogInterface, _: Int ->
         @IdRes val selectedButtonId = dialogView.findViewById<RadioGroup>(R.id.select_browser_mode).checkedRadioButtonId
         val newCardsOrNotes = if (selectedButtonId == R.id.select_cards_mode) CardsOrNotes.CARDS else CardsOrNotes.NOTES
         if (cardsOrNotes != newCardsOrNotes) {
