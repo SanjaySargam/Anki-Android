@@ -35,6 +35,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
+import androidx.fragment.app.commit
 import androidx.lifecycle.Lifecycle
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
@@ -95,6 +96,8 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
     // the current editor view among front/style/back
     private var tabToViewId: HashMap<Int, Int?> = HashMap()
     private var startingOrdId = 0
+    private var templatePreviewerFrame: View? = null
+    private var fragmented = false
 
     // ----------------------------------------------------------------------------
     // Listeners
@@ -107,7 +110,7 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
             return
         }
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.card_template_editor_activity)
+        setContentView(R.layout.card_template_editor)
         // Load the args either from the intent or savedInstanceState bundle
         if (savedInstanceState == null) {
             // get model id
@@ -132,6 +135,10 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
             tempModel = CardTemplateNotetype.fromBundle(savedInstanceState)
         }
 
+        // check, if tablet layout
+        templatePreviewerFrame = findViewById(R.id.template_previewer_fragment)
+        fragmented = templatePreviewerFrame != null && templatePreviewerFrame!!.visibility == View.VISIBLE
+
         slidingTabLayout = findViewById(R.id.sliding_tabs)
         viewPager = findViewById(R.id.pager)
         setNavigationBarColor(R.attr.appBarColor)
@@ -139,6 +146,32 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
         // Disable the home icon
         enableToolbar()
         startLoadingCollection()
+
+        // Open TemplatePreviewerFragment if in fragmented mode
+        if (fragmented) {
+            loadTemplatePreviewerFragment()
+        }
+    }
+
+    private fun loadTemplatePreviewerFragment() {
+        launchCatchingTask {
+            val notetype = tempModel!!.notetype
+            val notetypeFile = NotetypeFile(this@CardTemplateEditor, notetype)
+            val ord = viewPager.currentItem
+            val note = withCol { currentFragment?.getNote(this) ?: Note.fromNotetypeId(notetype.id) }
+            val args = TemplatePreviewerArguments(
+                notetypeFile = notetypeFile,
+                id = note.id,
+                ord = ord,
+                fields = note.fields,
+                tags = note.tags,
+                fillEmpty = true
+            )
+            val details = TemplatePreviewerFragment.newInstance(args)
+            supportFragmentManager.commit {
+                replace(R.id.template_previewer_fragment, details)
+            }
+        }
     }
 
     public override fun onSaveInstanceState(outState: Bundle) {
@@ -683,7 +716,7 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
             templateEditor.finish()
         }
 
-        private fun getNote(col: Collection): Note? {
+        fun getNote(col: Collection): Note? {
             val nid = requireArguments().getLong(EDITOR_NOTE_ID)
             return if (nid != -1L) col.getNote(nid) else null
         }
