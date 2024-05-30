@@ -30,6 +30,7 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayout.OnTabSelectedListener
+import com.ichi2.anki.CardTemplateEditor
 import com.ichi2.anki.R
 import com.ichi2.anki.cardviewer.CardMediaPlayer
 import com.ichi2.anki.snackbar.BaseSnackbarBuilderProvider
@@ -44,6 +45,7 @@ import timber.log.Timber
 class TemplatePreviewerFragment :
     CardViewerFragment(R.layout.template_previewer),
     BaseSnackbarBuilderProvider {
+    private var fragmented = false
 
     override val viewModel: TemplatePreviewerViewModel by viewModels {
         val arguments = BundleCompat.getParcelable(requireArguments(), ARGS_KEY, TemplatePreviewerArguments::class.java)!!
@@ -58,8 +60,14 @@ class TemplatePreviewerFragment :
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        view.findViewById<MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener {
-            requireActivity().onBackPressedDispatcher.onBackPressed()
+        val toolbar = view.findViewById<MaterialToolbar>(R.id.toolbar)
+        fragmented = requireActivity().javaClass == CardTemplateEditor::class.java
+        if (!fragmented) {
+            toolbar.setNavigationOnClickListener {
+                requireActivity().onBackPressedDispatcher.onBackPressed()
+            }
+        } else {
+            toolbar.navigationIcon = null
         }
 
         val showAnswerButton = view.findViewById<MaterialButton>(R.id.show_answer).apply {
