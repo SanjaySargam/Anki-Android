@@ -94,7 +94,7 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
     private var tabToViewId: HashMap<Int, Int?> = HashMap()
     private var startingOrdId = 0
     private var templatePreviewerFrame: View? = null
-    private var fragmented = false
+    var fragmented = false
 
     // ----------------------------------------------------------------------------
     // Listeners
@@ -187,7 +187,7 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
         menu.findItem(R.id.action_insert_field).isVisible = isInsertFieldItemVisible
     }
 
-    private fun loadTemplatePreviewerFragment() {
+    fun loadTemplatePreviewerFragment() {
         launchCatchingTask {
             val notetype = tempModel!!.notetype
             val notetypeFile = NotetypeFile(this@CardTemplateEditor, notetype)
@@ -624,6 +624,9 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
 
                 // update the tab
                 templateEditor.viewPager.adapter!!.notifyDataSetChanged()
+                if (templateEditor.fragmented) {
+                    templateEditor.loadTemplatePreviewerFragment()
+                }
             }
         }
 
@@ -909,6 +912,9 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
             try {
                 templateEditor.getColUnsafe.modSchema()
                 schemaChangingAction.run()
+                if (templateEditor.fragmented) {
+                    templateEditor.loadTemplatePreviewerFragment()
+                }
             } catch (e: ConfirmModSchemaException) {
                 e.log()
                 val d = ConfirmationDialog()

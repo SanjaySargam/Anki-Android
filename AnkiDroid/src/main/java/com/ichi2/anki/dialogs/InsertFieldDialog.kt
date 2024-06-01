@@ -73,6 +73,9 @@ class InsertFieldDialog : DialogFragment() {
             REQUEST_FIELD_INSERT,
             bundleOf(KEY_INSERTED_FIELD to textView.text.toString())
         )
+        if ((activity as CardTemplateEditor).fragmented) {
+            (activity as CardTemplateEditor).loadTemplatePreviewerFragment()
+        }
         dismiss()
     }
 
