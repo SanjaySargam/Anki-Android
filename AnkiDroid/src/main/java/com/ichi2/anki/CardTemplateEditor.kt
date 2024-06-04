@@ -245,12 +245,11 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
                 val ordinal = viewPager.currentItem
                 // isOrdinalPendingAdd method will check if there are any new card types added or not,
                 // if TempModel has new card type then numAffectedCards will be 0 by default.
-                val numAffectedCards =
-                    if (!CardTemplateNotetype.isOrdinalPendingAdd(tempModel!!, ordinal)) {
-                        col.notetypes.tmplUseCount(tempModel.notetype, ordinal)
-                    } else {
-                        0
-                    }
+                val numAffectedCards = if (!CardTemplateNotetype.isOrdinalPendingAdd(tempModel!!, ordinal)) {
+                    col.notetypes.tmplUseCount(tempModel.notetype, ordinal)
+                } else {
+                    0
+                }
                 currentFragment?.confirmAddCards(tempModel.notetype, numAffectedCards)
                 return true
             }
@@ -275,13 +274,12 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
                 }
 
                 // Show confirmation dialog
-                val numAffectedCards =
-                    if (!CardTemplateNotetype.isOrdinalPendingAdd(tempModel, ordinal)) {
-                        Timber.d("Ordinal is not a pending add, so we'll get the current card count for confirmation")
-                        col.notetypes.tmplUseCount(tempModel.notetype, ordinal)
-                    } else {
-                        0
-                    }
+                val numAffectedCards = if (!CardTemplateNotetype.isOrdinalPendingAdd(tempModel, ordinal)) {
+                    Timber.d("Ordinal is not a pending add, so we'll get the current card count for confirmation")
+                    col.notetypes.tmplUseCount(tempModel.notetype, ordinal)
+                } else {
+                    0
+                }
                 currentFragment?.confirmDeleteCards(template, tempModel.notetype, numAffectedCards)
                 return true
             }
