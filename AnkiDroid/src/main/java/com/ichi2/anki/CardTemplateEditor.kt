@@ -531,6 +531,7 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
                 }
             }
             if (!templateEditor.fragmented) {
+                Timber.i("setup menu")
                 setupMenu()
             }
         }
@@ -557,10 +558,7 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
             return noteType.isCloze || noteType.isImageOcclusion
         }
 
-        fun setupCommonMenu(menu: Menu, menuInflater: MenuInflater) {
-            menu.clear()
-            menuInflater.inflate(R.menu.card_template_editor, menu)
-
+        fun setupCommonMenu(menu: Menu) {
             if (noteTypeCreatesDynamicNumberOfNotes()) {
                 Timber.d("Editing cloze/occlusion model, disabling add/delete card template and deck override functionality")
                 menu.findItem(R.id.action_add).isVisible = false
@@ -673,7 +671,9 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
             (requireActivity() as MenuHost).addMenuProvider(
                 object : MenuProvider {
                     override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-                        setupCommonMenu(menu, menuInflater)
+                        menu.clear()
+                        menuInflater.inflate(R.menu.card_template_editor, menu)
+                        setupCommonMenu(menu)
                     }
 
                     override fun onMenuItemSelected(menuItem: MenuItem): Boolean {

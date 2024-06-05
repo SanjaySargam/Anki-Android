@@ -18,8 +18,6 @@ package com.ichi2.anki.previewer
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.view.Menu
-import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.webkit.WebView
@@ -27,10 +25,7 @@ import androidx.appcompat.widget.ThemeUtils
 import androidx.appcompat.widget.Toolbar
 import androidx.core.os.BundleCompat
 import androidx.core.os.bundleOf
-import androidx.core.view.MenuHost
-import androidx.core.view.MenuProvider
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
@@ -50,8 +45,10 @@ import timber.log.Timber
 
 class TemplatePreviewerFragment :
     CardViewerFragment(R.layout.template_previewer),
-    BaseSnackbarBuilderProvider {
+    BaseSnackbarBuilderProvider,
+    Toolbar.OnMenuItemClickListener {
     private var fragmented = false
+    private lateinit var toolbar: Toolbar
 
     override val viewModel: TemplatePreviewerViewModel by viewModels {
         val arguments = BundleCompat.getParcelable(requireArguments(), ARGS_KEY, TemplatePreviewerArguments::class.java)!!
@@ -66,7 +63,7 @@ class TemplatePreviewerFragment :
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val toolbar = view.findViewById<Toolbar>(R.id.toolbar)
+        toolbar = view.findViewById(R.id.toolbar)
         fragmented = requireActivity().javaClass == CardTemplateEditor::class.java
         if (!fragmented) {
             toolbar.setNavigationOnClickListener {
@@ -76,10 +73,6 @@ class TemplatePreviewerFragment :
             toolbar.navigationIcon = null
         }
 
-//        if (fragmented) {
-//            toolbar!!.setOnMenuItemClickListener(this)
-//            (activity as CardTemplateEditor).configureToolbar(toolbar.menu)
-//        }
         val showAnswerButton = view.findViewById<MaterialButton>(R.id.show_answer).apply {
             setOnClickListener { viewModel.toggleShowAnswer() }
         }
@@ -127,28 +120,15 @@ class TemplatePreviewerFragment :
             }
         }
         if (fragmented) {
-            setupFragmentMenu()
+            toolbar.setOnMenuItemClickListener(this)
+            val menu = toolbar.menu
+            toolbar.inflateMenu(R.menu.card_template_editor)
+            (activity as CardTemplateEditor).currentFragment?.setupCommonMenu(menu)
         }
     }
 
-//    override fun onMenuItemClick(item: MenuItem): Boolean {
-//        return (activity as CardTemplateEditor).onOptionsItemSelected(item)
-//    }
-
-    private fun setupFragmentMenu() {
-        (requireActivity() as MenuHost).addMenuProvider(
-            object : MenuProvider {
-                override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-                    (activity as CardTemplateEditor).currentFragment?.setupCommonMenu(menu, menuInflater)
-                }
-
-                override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-                    return (activity as CardTemplateEditor).currentFragment?.handleMenuItemSelected(menuItem) == true
-                }
-            },
-            viewLifecycleOwner,
-            Lifecycle.State.RESUMED
-        )
+    override fun onMenuItemClick(item: MenuItem): Boolean {
+        return (activity as CardTemplateEditor).currentFragment?.handleMenuItemSelected(item) == true
     }
 
     companion object {
