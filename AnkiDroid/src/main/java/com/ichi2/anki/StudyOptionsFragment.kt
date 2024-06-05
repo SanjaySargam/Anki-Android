@@ -92,6 +92,7 @@ class StudyOptionsFragment : Fragment(), ChangeManager.Subscriber, Toolbar.OnMen
      */
     private val buttonClickListener = View.OnClickListener { v: View ->
         if (v.id == R.id.studyoptions_start) {
+            // dffh
             Timber.i("StudyOptionsFragment:: start study button pressed")
             if (currentContentView != CONTENT_CONGRATS) {
                 openReviewer()
