@@ -152,6 +152,7 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         if (!fragmented) {
+            Timber.i("configureToolbar")
             configureToolbar(menu)
         }
         return super.onCreateOptionsMenu(menu)
@@ -237,7 +238,7 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
             return true
         }
         val col = getColUnsafe
-        val tempModel = tempModel
+        val tempModels = tempModel
         when (item.itemId) {
             R.id.action_add -> {
                 Timber.i("CardTemplateEditor:: Add template button pressed")
@@ -245,12 +246,15 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
                 val ordinal = viewPager.currentItem
                 // isOrdinalPendingAdd method will check if there are any new card types added or not,
                 // if TempModel has new card type then numAffectedCards will be 0 by default.
-                val numAffectedCards = if (!CardTemplateNotetype.isOrdinalPendingAdd(tempModel!!, ordinal)) {
-                    col.notetypes.tmplUseCount(tempModel.notetype, ordinal)
+                Timber.i("tempModel $tempModels")
+                Timber.i("ordinal $ordinal")
+                val numAffectedCards = if (!CardTemplateNotetype.isOrdinalPendingAdd(tempModels!!, ordinal)) {
+                    col.notetypes.tmplUseCount(tempModels.notetype, ordinal)
                 } else {
                     0
                 }
-                currentFragment?.confirmAddCards(tempModel.notetype, numAffectedCards)
+                Timber.i("numAffectedCards $numAffectedCards")
+                currentFragment?.confirmAddCards(tempModels.notetype, numAffectedCards)
                 return true
             }
 
@@ -262,30 +266,33 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
                 Timber.i("CardTemplateEditor:: Delete template button pressed")
                 val res = resources
                 val ordinal = viewPager.currentItem
-                val template = tempModel!!.getTemplate(ordinal)
+                val template = tempModels!!.getTemplate(ordinal)
                 // Don't do anything if only one template
-                if (tempModel.templateCount < 2) {
+                if (tempModels.templateCount < 2) {
                     showSimpleMessageDialog(res.getString(R.string.card_template_editor_cant_delete))
                     return true
                 }
-
-                if (currentFragment?.deletionWouldOrphanNote(col, tempModel, ordinal) == true) {
+                Timber.i("tempModel $tempModels")
+                Timber.i("ordinal $ordinal")
+                if (currentFragment?.deletionWouldOrphanNote(col, tempModels, ordinal) == true) {
+                    Timber.i("deletionWouldOrphanNote -> true")
                     return true
                 }
 
                 // Show confirmation dialog
-                val numAffectedCards = if (!CardTemplateNotetype.isOrdinalPendingAdd(tempModel, ordinal)) {
+                val numAffectedCards = if (!CardTemplateNotetype.isOrdinalPendingAdd(tempModels, ordinal)) {
                     Timber.d("Ordinal is not a pending add, so we'll get the current card count for confirmation")
-                    col.notetypes.tmplUseCount(tempModel.notetype, ordinal)
+                    col.notetypes.tmplUseCount(tempModels.notetype, ordinal)
                 } else {
                     0
                 }
-                currentFragment?.confirmDeleteCards(template, tempModel.notetype, numAffectedCards)
+                Timber.i("numAffectedCards $numAffectedCards")
+                currentFragment?.confirmDeleteCards(template, tempModels.notetype, numAffectedCards)
                 return true
             }
 
             R.id.action_add_deck_override -> {
-                currentFragment?.displayDeckOverrideDialog(tempModel!!)
+                currentFragment?.displayDeckOverrideDialog(tempModels!!)
                 return true
             }
 
@@ -311,7 +318,7 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
                     }
                     launchCatchingTask(resources.getString(R.string.card_template_editor_save_error)) {
                         withProgress(resources.getString(R.string.saving_model)) {
-                            withCol { tempModel!!.saveToDatabase() }
+                            withCol { tempModels!!.saveToDatabase() }
                         }
                         currentFragment?.onModelSaved()
                     }
@@ -654,9 +661,12 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
         }
 
         override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+            Timber.i("onViewCreated onViewCreated")
             initTabLayoutMediator()
             templateEditor.slidingTabLayout?.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(p0: TabLayout.Tab?) {
+                    Timber.i("onTabSelected")
+                    templateEditor.invalidateOptionsMenu()
                     if (templateEditor.fragmented) {
                         templateEditor.loadTemplatePreviewerFragment()
                     }
@@ -818,6 +828,7 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
             // template delete queued up, we check the database to see if this delete in combo with any other
             // pending deletes could orphan cards
             if (!CardTemplateNotetype.isOrdinalPendingAdd(tempModel!!, position)) {
+                Timber.i("deletionWouldOrphanNote isOrdinalPendingAdd -> false")
                 val currentDeletes = tempModel.getDeleteDbOrds(position)
                 // TODO - this is a SQL query on GUI thread - should see a DeckTask conversion ideally
                 if (col.notetypes.getCardIdsForModel(tempModel.modelId, currentDeletes) == null) {
