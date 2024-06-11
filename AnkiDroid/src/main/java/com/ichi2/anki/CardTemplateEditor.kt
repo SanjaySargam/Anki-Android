@@ -287,7 +287,11 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
         if (keyCode == KeyEvent.KEYCODE_P) {
             if (event.isCtrlPressed) {
                 val currentFragment = currentFragment
-                currentFragment?.performPreview()
+                if (fragmented) {
+                    loadTemplatePreviewerFragment()
+                } else {
+                    currentFragment?.performPreview()
+                }
             }
         }
         return super.onKeyUp(keyCode, event)
@@ -637,7 +641,12 @@ open class CardTemplateEditor : AnkiActivity(), DeckSelectionListener {
                                 return true
                             }
                             R.id.action_preview -> {
-                                performPreview()
+                                if (templateEditor.fragmented) {
+                                    templateEditor.loadTemplatePreviewerFragment()
+                                } else {
+                                    performPreview()
+                                    // ghgh
+                                }
                                 return true
                             }
                             R.id.action_confirm -> {
