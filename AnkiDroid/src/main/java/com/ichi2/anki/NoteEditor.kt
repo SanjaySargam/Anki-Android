@@ -468,12 +468,20 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
         savedInstanceState.putStringArrayList("tags", selectedTags?.let { ArrayList(it) })
     }
 
+    override fun onStart() {
+        super.onStart()
+        launchCatchingTask {
+            withCol {
+                onCollectionLoad(this)
+            }
+        }
+    }
+
     private val fieldsAsBundleForPreview: Bundle
         get() = NoteService.getFieldsAsBundleForPreview(editFields, shouldReplaceNewlines())
 
     // Finish initializing the activity after the collection has been correctly loaded
-    override fun onCollectionLoaded(col: Collection) {
-        super.onCollectionLoaded(col)
+    private fun onCollectionLoad(col: Collection) {
         val intent = intent
         Timber.d("NoteEditor() onCollectionLoaded: caller: %d", caller)
         registerExternalStorageListener()
