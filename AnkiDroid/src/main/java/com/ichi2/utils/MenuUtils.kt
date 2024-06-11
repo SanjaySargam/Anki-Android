@@ -22,6 +22,7 @@ import androidx.appcompat.graphics.drawable.DrawableWrapperCompat
 import androidx.appcompat.view.menu.MenuBuilder
 import androidx.appcompat.view.menu.MenuItemImpl
 import androidx.core.view.forEach
+import androidx.fragment.app.Fragment
 import com.google.android.material.color.MaterialColors
 import com.ichi2.anki.R
 import com.ichi2.anki.convertDpToPixel
@@ -33,6 +34,14 @@ private fun Menu.forEachOverflowItemRecursive(block: (MenuItem) -> Unit) {
         if ((item as? MenuItemImpl)?.isActionButton == false) block(item)
         item.subMenu?.forEachOverflowItemRecursive(block)
     }
+}
+
+fun Fragment.increaseHorizontalPaddingOfOverflowMenuIcons(menu: Menu) {
+    requireContext().increaseHorizontalPaddingOfOverflowMenuIcons(menu)
+}
+
+fun Fragment.tintOverflowMenuIcons(menu: Menu) {
+    requireContext().tintOverflowMenuIcons(menu)
 }
 
 /**

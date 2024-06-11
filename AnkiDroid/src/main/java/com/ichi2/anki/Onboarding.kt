@@ -17,6 +17,7 @@
 
 package com.ichi2.anki
 
+import android.app.Activity
 import android.content.Context
 import android.view.View
 import android.widget.FrameLayout
@@ -253,7 +254,7 @@ abstract class Onboarding<Feature>(
         }
     }
 
-    class NoteEditor(private val activityContext: com.ichi2.anki.NoteEditor) :
+    class NoteEditor(private val activityContext: Context) :
         Onboarding<NoteEditor.NoteEditorOnboardingEnum>(activityContext, mutableListOf()) {
 
         init {
@@ -262,7 +263,7 @@ abstract class Onboarding<Feature>(
         }
 
         private fun showTutorialForFrontAndBackIfNew() {
-            CustomMaterialTapTargetPromptBuilder(activityContext, NoteEditorOnboardingEnum.FRONT_BACK)
+            CustomMaterialTapTargetPromptBuilder(activityContext as Activity, NoteEditorOnboardingEnum.FRONT_BACK)
                 .createRectangleWithDimmedBackground()
                 .setDismissedListener { onCreate() }
                 .setTarget(R.id.CardEditorEditFieldsLayout)
@@ -272,7 +273,7 @@ abstract class Onboarding<Feature>(
         }
 
         private fun showTutorialForFormattingTools() {
-            CustomMaterialTapTargetPromptBuilder(activityContext, NoteEditorOnboardingEnum.FORMATTING_TOOLS)
+            CustomMaterialTapTargetPromptBuilder(activityContext as Activity, NoteEditorOnboardingEnum.FORMATTING_TOOLS)
                 .createRectangleWithDimmedBackground()
                 .setTarget(R.id.editor_toolbar)
                 .setPrimaryText(R.string.format_content)

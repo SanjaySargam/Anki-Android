@@ -505,6 +505,24 @@ suspend fun AnkiActivity.userAcceptsSchemaChange(): Boolean {
     return hasAcceptedSchemaChange
 }
 
+suspend fun Fragment.userAcceptsSchemaChange(): Boolean {
+    if (withCol { schemaChanged() }) {
+        return true
+    }
+    val hasAcceptedSchemaChange = suspendCoroutine { coroutine ->
+        AlertDialog.Builder(requireContext()).show {
+            message(text = TR.deckConfigWillRequireFullSync().replace("\\s+".toRegex(), " "))
+            positiveButton(R.string.dialog_ok) { coroutine.resume(true) }
+            negativeButton(R.string.dialog_cancel) { coroutine.resume(false) }
+            setOnCancelListener { coroutine.resume(false) }
+        }
+    }
+    if (hasAcceptedSchemaChange) {
+        withCol { modSchemaNoCheck() }
+    }
+    return hasAcceptedSchemaChange
+}
+
 /**
  * Ensures that current continuation is not [cancelled][CancellableContinuation.isCancelled].
  *

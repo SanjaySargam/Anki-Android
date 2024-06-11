@@ -18,9 +18,8 @@ package com.ichi2.anki
 import android.app.Activity
 import android.view.KeyEvent
 import android.view.inputmethod.BaseInputConnection
+import androidx.fragment.app.testing.FragmentScenario
 import androidx.lifecycle.Lifecycle
-import androidx.test.core.app.ActivityScenario
-import androidx.test.core.app.ActivityScenario.ActivityAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.Matchers.equalTo
@@ -49,14 +48,14 @@ class NoteEditorTabOrderTest : NoteEditorTest() {
     @Throws(Throwable::class)
     fun testTabOrder() {
         ensureCollectionLoaded()
-        val scenario = activityRule!!.scenario
+        val scenario = launchFragment()
         scenario.moveToState(Lifecycle.State.RESUMED)
 
         onActivity(scenario) { editor: NoteEditor ->
-            sendKeyDownUp(editor, KeyEvent.KEYCODE_A)
-            sendKeyDownUp(editor, KeyEvent.KEYCODE_TAB)
-            sendKeyDownUp(editor, KeyEvent.KEYCODE_TAB)
-            sendKeyDownUp(editor, KeyEvent.KEYCODE_B)
+            sendKeyDownUp(editor.requireActivity(), KeyEvent.KEYCODE_A)
+            sendKeyDownUp(editor.requireActivity(), KeyEvent.KEYCODE_TAB)
+            sendKeyDownUp(editor.requireActivity(), KeyEvent.KEYCODE_TAB)
+            sendKeyDownUp(editor.requireActivity(), KeyEvent.KEYCODE_B)
         }
 
         onActivity(scenario) { editor: NoteEditor ->
@@ -77,11 +76,11 @@ class NoteEditorTabOrderTest : NoteEditorTest() {
 
     @Throws(Throwable::class)
     private fun onActivity(
-        scenario: ActivityScenario<NoteEditor>,
-        noteEditorActivityAction: ActivityAction<NoteEditor>
+        scenario: FragmentScenario<NoteEditor>,
+        noteEditorActivityAction: FragmentScenario.FragmentAction<NoteEditor>
     ) {
         val wrapped = AtomicReference<Throwable?>(null)
-        scenario.onActivity { a: NoteEditor ->
+        scenario.onFragment { a: NoteEditor ->
             try {
                 noteEditorActivityAction.perform(a)
             } catch (t: Throwable) {
