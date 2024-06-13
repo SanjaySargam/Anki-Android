@@ -520,7 +520,8 @@ open class CardBrowser :
             }
             setSelection(viewModel.column2Index)
         }
-
+        val firstCard = viewModel.getCardIdAtPosition(0)
+        Timber.i("firstCard: $firstCard")
         cardsListView.setOnItemClickListener { _: AdapterView<*>?, view: View?, position: Int, _: Long ->
             if (viewModel.isInMultiSelectMode) {
                 // click on whole cell triggers select
