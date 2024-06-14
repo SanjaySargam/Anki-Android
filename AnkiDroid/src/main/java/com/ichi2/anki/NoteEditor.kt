@@ -2498,6 +2498,12 @@ class NoteEditor :
         private const val PREF_NOTE_EDITOR_FONT_SIZE = "note_editor_font_size"
         private const val PREF_NOTE_EDITOR_CUSTOM_BUTTONS = "note_editor_custom_buttons"
 
+        fun newInstance(arguments: Bundle): NoteEditor {
+            return NoteEditor().apply {
+                this.arguments = arguments
+            }
+        }
+
         private fun shouldReplaceNewlines(): Boolean {
             return AnkiDroidApp.instance.sharedPrefs()
                 .getBoolean(PREF_NOTE_EDITOR_NEWLINE_REPLACE, true)

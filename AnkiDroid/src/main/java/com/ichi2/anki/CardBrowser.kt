@@ -34,6 +34,8 @@ import androidx.annotation.MainThread
 import androidx.annotation.VisibleForTesting
 import androidx.appcompat.widget.SearchView
 import androidx.appcompat.widget.ThemeUtils
+import androidx.fragment.app.FragmentContainerView
+import androidx.fragment.app.commit
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import anki.collection.OpChanges
@@ -133,6 +135,8 @@ open class CardBrowser :
     }
 
     lateinit var viewModel: CardBrowserViewModel
+
+    private var noteEditorFrame: FragmentContainerView? = null
 
     /** List of cards in the browser.
      * When the list is changed, the position member of its elements should get changed. */
@@ -340,8 +344,11 @@ open class CardBrowser :
         // must be called once we have an accessible collection
         viewModel = createViewModel(launchOptions)
 
-        setContentView(R.layout.card_browser)
+        setContentView(R.layout.cardbrowser)
         initNavigationDrawer(findViewById(android.R.id.content))
+        // check, if tablet layout
+        noteEditorFrame = findViewById(R.id.note_editor_frame)
+        fragmented = noteEditorFrame != null && noteEditorFrame!!.visibility == View.VISIBLE
         // initialize the lateinit variables
         // Load reference to action bar title
         actionBarTitle = findViewById(R.id.toolbar_title)
@@ -393,6 +400,20 @@ open class CardBrowser :
         onboarding.onCreate()
 
         setupFlows()
+    }
+
+    private fun loadNoteEditorFragment(cardId: CardId) {
+        if (!fragmented) {
+            return
+        }
+        val arguments = Bundle().apply {
+            putInt(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_EDIT)
+            putLong(NoteEditor.EXTRA_CARD_ID, cardId)
+        }
+        val details = NoteEditor.newInstance(arguments)
+        supportFragmentManager.commit {
+            replace(R.id.note_editor_frame, details)
+        }
     }
 
     @Suppress("UNUSED_PARAMETER")
@@ -466,7 +487,7 @@ open class CardBrowser :
             }
         }
         fun initCompletedChanged(completed: Boolean) {
-            if (completed) searchCards()
+            if (completed) searchCards(true)
         }
 
         viewModel.flowOfIsTruncated.launchCollectionInLifecycleScope(::onIsTruncatedChanged)
@@ -643,10 +664,14 @@ open class CardBrowser :
     @NeedsTest("I/O edits are saved")
     private fun openNoteEditorForCard(cardId: CardId) {
         currentCardId = cardId
-        val intent = EditCardDestination(currentCardId).toIntent(this, animation = Direction.DEFAULT)
-        onEditCardActivityResult.launch(intent)
-        // #6432 - FIXME - onCreateOptionsMenu crashes if receiving an activity result from edit card when in multiselect
-        viewModel.endMultiSelectMode()
+        if (fragmented) {
+            loadNoteEditorFragment(currentCardId)
+        } else {
+            val intent = EditCardDestination(currentCardId).toIntent(this, animation = Direction.DEFAULT)
+            onEditCardActivityResult.launch(intent)
+            // #6432 - FIXME - onCreateOptionsMenu crashes if receiving an activity result from edit card when in multiselect
+            viewModel.endMultiSelectMode()
+        }
     }
 
     private fun openNoteEditorForCurrentlySelectedNote() {
@@ -1388,10 +1413,16 @@ open class CardBrowser :
 
     @RustCleanup("remove card cache; switch to RecyclerView and browserRowForId (#11889)")
     @VisibleForTesting
-    fun searchCards() {
+    fun searchCards(loadNoteEditor: Boolean = false) {
         launchCatchingTask {
             // TODO: Move this to a LinearProgressIndicator and remove withProgress
-            withProgress { viewModel.launchSearchForCards()?.join() }
+            withProgress {
+                viewModel.launchSearchForCards()?.join()
+                if (loadNoteEditor) {
+                    loadNoteEditorFragment(viewModel.getCardIdAtPosition(0))
+                    searchCards()
+                }
+            }
         }
     }
 
