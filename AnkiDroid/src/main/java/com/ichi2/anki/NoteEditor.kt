@@ -136,6 +136,8 @@ class NoteEditor :
     TagsDialogListener,
     BaseSnackbarBuilderProvider,
     MainToolbar.OnMenuItemClickListener {
+    private var fragmented = false
+
     /** Whether any change are saved. E.g. multimedia, new card added, field changed and saved. */
     private var changed = false
     private var isTagsEdited = false
@@ -433,6 +435,9 @@ class NoteEditor :
         }
         // Enable toolbar
         mainToolbar = view.findViewById(R.id.toolbar)
+
+        fragmented = requireActivity().javaClass == CardBrowser::class.java
+
         ankiActivity.startLoadingCollection()
 //        onboarding.onCreate()
         // TODO this callback doesn't handle predictive back navigation!
@@ -1230,13 +1235,29 @@ class NoteEditor :
                 updateToolbar()
             }
         }
-        return false
+        return (activity as CardBrowser).onOptionsItemSelected(item)
     }
 
-    private fun setupMenu() {
+    fun setupMultiSelectMenu() {
+        mainToolbar.inflateMenu(R.menu.card_browser_multiselect)
+        (activity as CardBrowser).setMultiSelectFlagTitles(mainToolbar.menu)
+        (activity as CardBrowser).setupCommonMenuItems(mainToolbar.menu)
+    }
+
+    fun setupMenu(isMultiSelect: Boolean = false) {
+        mainToolbar.menu.clear()
         mainToolbar.setOnMenuItemClickListener(this)
         mainToolbar.inflateMenu(R.menu.note_editor)
         val menu = mainToolbar.menu
+        if (fragmented) {
+            if (isMultiSelect) {
+                setupMultiSelectMenu()
+            } else {
+                mainToolbar.inflateMenu(R.menu.card_browser)
+                (activity as CardBrowser).setFlagTitles(menu)
+                menu.findItem(R.id.action_search).isVisible = false
+            }
+        }
         if (addNote) {
             menu.findItem(R.id.action_copy_note).isVisible = false
             val iconVisible = allowSaveAndPreview()

@@ -301,6 +301,16 @@ open class CardBrowser :
     private val selectedRowIds: List<CardId>
         get() = viewModel.selectedRowIds
 
+    val fragment: NoteEditor?
+        get() {
+            val frag = supportFragmentManager.findFragmentById(R.id.note_editor_frame)
+            return if (frag is NoteEditor) {
+                frag
+            } else {
+                null
+            }
+        }
+
     @MainThread
     @NeedsTest("search bar is set after selecting a saved search as first action")
     private fun searchForQuery(query: String) {
@@ -430,7 +440,7 @@ open class CardBrowser :
                 invalidateOptionsMenu()
             }
         }
-        fun onSelectedRowsChanged(rows: Set<CardCache>) = onSelectionChanged()
+        fun onSelectedRowsChanged(rows: Set<CardCache>) = onSelectionChanged(actionBarMenu, actionBarTitle)
         fun onColumnIndex1Changed(index: Int) =
             cardsAdapter.updateMapping { it[0] = COLUMN1_KEYS[index] }
         fun onColumnIndex2Changed(index: Int) =
@@ -467,6 +477,9 @@ open class CardBrowser :
             }
             // reload the actionbar using the multi-select mode actionbar
             invalidateOptionsMenu()
+            if (fragmented && fragment != null) {
+                fragment!!.setupMenu(inMultiSelect)
+            }
         }
         fun cardsUpdatedChanged(unit: Unit) = cardsAdapter.notifyDataSetChanged()
         fun searchStateChanged(searchState: SearchState) {
@@ -487,7 +500,7 @@ open class CardBrowser :
             }
         }
         fun initCompletedChanged(completed: Boolean) {
-            if (completed) searchCards(true)
+            if (completed) searchCards(fragmented)
         }
 
         viewModel.flowOfIsTruncated.launchCollectionInLifecycleScope(::onIsTruncatedChanged)
@@ -799,25 +812,36 @@ open class CardBrowser :
                 // Provide SearchView with the previous search terms
                 searchView!!.setQuery(viewModel.searchTerms, false)
             }
+            if (fragmented) {
+                menu.setGroupVisible(R.id.commonItems, false)
+            }
         } else {
             // multi-select mode
-            menuInflater.inflate(R.menu.card_browser_multiselect, menu)
-            setMultiSelectFlagTitles(menu)
+            if (!fragmented) {
+                menuInflater.inflate(R.menu.card_browser_multiselect, menu)
+                setMultiSelectFlagTitles(menu)
+            }
             showBackIcon()
             increaseHorizontalPaddingOfOverflowMenuIcons(menu)
         }
+
+        if (!fragmented) {
+            setupCommonMenuItems(actionBarMenu)
+        }
+        return super.onCreateOptionsMenu(menu)
+    }
+
+    fun setupCommonMenuItems(actionBarMenu: Menu?) {
         actionBarMenu?.findItem(R.id.action_undo)?.run {
             isVisible = getColUnsafe.undoAvailable()
             title = getColUnsafe.undoLabel()
         }
-
         actionBarMenu?.findItem(R.id.action_reschedule_cards)?.title =
             TR.actionsSetDueDate().toSentenceCase(R.string.sentence_set_due_date)
 
-        previewItem = menu.findItem(R.id.action_preview)
-        onSelectionChanged()
-        updatePreviewMenuItem()
-        return super.onCreateOptionsMenu(menu)
+        previewItem = actionBarMenu?.findItem(R.id.action_preview)
+        onSelectionChanged(actionBarMenu, actionBarTitle)
+        updatePreviewMenuItem(previewItem)
     }
 
     override fun onNavigationPressed() {
@@ -828,7 +852,7 @@ open class CardBrowser :
         }
     }
 
-    private fun setFlagTitles(menu: Menu) {
+    fun setFlagTitles(menu: Menu) {
         menu.findItem(R.id.action_select_flag_zero).title = Flag.NONE.displayName()
         menu.findItem(R.id.action_select_flag_one).title = Flag.RED.displayName()
         menu.findItem(R.id.action_select_flag_two).title = Flag.ORANGE.displayName()
@@ -839,7 +863,7 @@ open class CardBrowser :
         menu.findItem(R.id.action_select_flag_seven).title = Flag.PURPLE.displayName()
     }
 
-    private fun setMultiSelectFlagTitles(menu: Menu) {
+    fun setMultiSelectFlagTitles(menu: Menu) {
         menu.findItem(R.id.action_flag_zero).title = Flag.NONE.displayName()
         menu.findItem(R.id.action_flag_one).title = Flag.RED.displayName()
         menu.findItem(R.id.action_flag_two).title = Flag.ORANGE.displayName()
@@ -850,13 +874,12 @@ open class CardBrowser :
         menu.findItem(R.id.action_flag_seven).title = Flag.PURPLE.displayName()
     }
 
-    private fun updatePreviewMenuItem() {
+    private fun updatePreviewMenuItem(previewItem: MenuItem?) {
         previewItem?.isVisible = viewModel.rowCount > 0
     }
 
-    private fun updateMultiselectMenu() {
+    private fun updateMultiselectMenu(actionBarMenu: Menu?) {
         Timber.d("updateMultiselectMenu()")
-        val actionBarMenu = actionBarMenu
         if (actionBarMenu?.findItem(R.id.action_suspend_card) == null) {
             return
         }
@@ -1449,7 +1472,7 @@ open class CardBrowser :
             }
         }
         restoreScrollPositionIfRequested()
-        updatePreviewMenuItem()
+        updatePreviewMenuItem(previewItem)
     }
 
     /**
@@ -1482,8 +1505,8 @@ open class CardBrowser :
         if (colIsOpenUnsafe()) {
             cardsAdapter.notifyDataSetChanged()
             deckSpinnerSelection.notifyDataSetChanged()
-            onSelectionChanged()
-            updatePreviewMenuItem()
+            onSelectionChanged(actionBarMenu, actionBarTitle)
+            updatePreviewMenuItem(previewItem)
         }
     }
 
@@ -1628,7 +1651,7 @@ open class CardBrowser :
         forceRefreshSearch()
         viewModel.endMultiSelectMode()
         cardsAdapter.notifyDataSetChanged()
-        updatePreviewMenuItem()
+        updatePreviewMenuItem(previewItem)
         invalidateOptionsMenu() // maybe the availability of undo changed
     }
     private fun saveScrollingState(position: Int) {
@@ -1881,11 +1904,11 @@ open class CardBrowser :
         }
     }
 
-    fun onSelectionChanged() {
+    private fun onSelectionChanged(actionBarMenu: Menu?, actionBarTitle: TextView) {
         Timber.d("onSelectionChanged()")
         try {
             // If we're not in mutliselect, we can select cards if there are cards to select
-            if (!viewModel.isInMultiSelectMode) {
+            if (!viewModel.isInMultiSelectMode && !fragmented) {
                 actionBarMenu?.findItem(R.id.action_select_all)?.apply {
                     isVisible = viewModel.rowCount != 0
                 }
@@ -1894,7 +1917,7 @@ open class CardBrowser :
 
             // set the number of selected rows (only in multiselect)
             actionBarTitle.text = String.format(LanguageUtil.getLocaleCompat(resources), "%d", viewModel.selectedRowCount())
-            updateMultiselectMenu()
+            updateMultiselectMenu(actionBarMenu)
         } finally {
             if (colIsOpenUnsafe()) {
                 cardsAdapter.notifyDataSetChanged()
