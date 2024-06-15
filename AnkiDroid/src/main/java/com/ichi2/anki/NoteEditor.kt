@@ -447,9 +447,13 @@ class NoteEditor :
             closeCardEditorWithCheck()
         }
 
-        mainToolbar.setNavigationOnClickListener {
-            Timber.i("NoteEditor:: onBackPressed()")
-            closeCardEditorWithCheck()
+        if (fragmented) {
+            mainToolbar.navigationIcon = null
+        } else {
+            mainToolbar.setNavigationOnClickListener {
+                Timber.i("NoteEditor:: onBackPressed()")
+                closeCardEditorWithCheck()
+            }
         }
 
         ankiActivity.setNavigationBarColor(R.attr.toolbarBackgroundColor)
