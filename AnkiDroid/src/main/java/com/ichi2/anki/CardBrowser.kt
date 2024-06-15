@@ -1442,6 +1442,12 @@ open class CardBrowser :
             withProgress {
                 viewModel.launchSearchForCards()?.join()
                 if (loadNoteEditor) {
+                    if (cards.size() == 0) {
+                        fragmented = false
+                        noteEditorFrame!!.visibility = View.GONE
+                        invalidateOptionsMenu()
+                        return@withProgress
+                    }
                     loadNoteEditorFragment(viewModel.getCardIdAtPosition(0))
                     searchCards()
                 }
