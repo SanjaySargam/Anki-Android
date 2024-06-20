@@ -26,6 +26,7 @@ import android.widget.EditText
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.test.core.app.ActivityScenario
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import anki.config.ConfigKey
 import com.ichi2.anim.ActivityTransitionAnimation.Direction.DEFAULT
@@ -207,7 +208,16 @@ class NoteEditorTest : RobolectricTest() {
     @Test
     fun verifyStartupAndCloseWithNoCollectionDoesNotCrash() {
         enableNullCollection()
-        ActivityScenario.launchActivityForResult(SingleFragmentActivity::class.java).use { scenario ->
+        val intent = Intent(ApplicationProvider.getApplicationContext(), SingleFragmentActivity::class.java).apply {
+            putExtra(SingleFragmentActivity.FRAGMENT_NAME_EXTRA, NoteEditor::class.jvmName)
+            putExtra(
+                SingleFragmentActivity.FRAGMENT_ARGS_EXTRA,
+                Bundle().apply {
+                    putInt(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_DECKPICKER)
+                }
+            )
+        }
+        ActivityScenario.launch<SingleFragmentActivity>(intent).use { scenario ->
             scenario.onActivity { noteEditor ->
                 noteEditor.onBackPressedDispatcher.onBackPressed()
                 assertThat("Pressing back should finish the activity", noteEditor.isFinishing)
