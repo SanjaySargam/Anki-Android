@@ -20,6 +20,8 @@ package com.ichi2.anki
 import android.app.Activity
 import android.content.ClipData
 import android.content.Intent
+import android.os.Bundle
+import android.os.Parcelable
 import android.widget.EditText
 import android.widget.Spinner
 import android.widget.TextView
@@ -50,6 +52,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import kotlin.reflect.jvm.jvmName
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -224,6 +227,7 @@ class NoteEditorTest : RobolectricTest() {
         val editor = activity1.supportFragmentManager.fragments.first() as NoteEditor
         col.config.set(CURRENT_DECK, Consts.DEFAULT_DECK_ID) // Change DID if going through default path
         val copyNoteIntent = getCopyNoteIntent(editor)
+        copyNoteIntent.putExtra(SingleFragmentActivity.FRAGMENT_NAME_EXTRA, NoteEditor::class.jvmName)
         val activity = super.startActivityNormallyOpenCollectionWithIntent(SingleFragmentActivity::class.java, copyNoteIntent)
         val newNoteEditor = activity.supportFragmentManager.fragments.first() as NoteEditor
         assertThat("Selected deck ID should be the current deck id", editor.deckId, equalTo(currentDid))
@@ -262,7 +266,11 @@ class NoteEditorTest : RobolectricTest() {
         ensureCollectionLoadIsSynchronous()
 
         val i = Intent(Intent.ACTION_PROCESS_TEXT)
-        i.putExtra(Intent.EXTRA_PROCESS_TEXT, "hello\nworld")
+        val args = Bundle().apply {
+            putString(Intent.EXTRA_PROCESS_TEXT, "hello\nworld")
+        }
+        i.putExtra(SingleFragmentActivity.FRAGMENT_NAME_EXTRA, NoteEditor::class.jvmName)
+        i.putExtra(SingleFragmentActivity.FRAGMENT_ARGS_EXTRA, args)
         val editor = startActivityNormallyOpenCollectionWithIntent(SingleFragmentActivity::class.java, i)
         val noteEditor = editor.supportFragmentManager.fragments.first() as NoteEditor
         val actual = noteEditor.currentFieldStrings.toList()
@@ -537,10 +545,14 @@ class NoteEditorTest : RobolectricTest() {
     private fun <T : SingleFragmentActivity?> getNoteEditorAddingNote(from: FromScreen, clazz: Class<T>): T {
         ensureCollectionLoadIsSynchronous()
         val i = Intent()
-        when (from) {
-            REVIEWER -> i.putExtra(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_REVIEWER_ADD)
-            DECK_LIST -> i.putExtra(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_DECKPICKER)
+        val args = Bundle().apply {
+            when (from) {
+                REVIEWER -> putInt(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_REVIEWER_ADD)
+                DECK_LIST -> putInt(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_DECKPICKER)
+            }
         }
+        i.putExtra(SingleFragmentActivity.FRAGMENT_NAME_EXTRA, NoteEditor::class.jvmName)
+        i.putExtra(SingleFragmentActivity.FRAGMENT_ARGS_EXTRA, args)
         return super.startActivityNormallyOpenCollectionWithIntent(clazz, i)
     }
 
@@ -551,12 +563,21 @@ class NoteEditorTest : RobolectricTest() {
 
     private fun <T : SingleFragmentActivity?> getNoteEditorEditingExistingBasicNote(n: Note, from: FromScreen, clazz: Class<T>): T {
         var i = Intent()
-        when (from) {
-            REVIEWER -> {
-                i = EditCardDestination(n.firstCard().id).toIntent(targetContext, DEFAULT)
-            }
-            DECK_LIST -> i.putExtra(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_DECKPICKER)
+        if (from == REVIEWER) {
+            i = EditCardDestination(n.firstCard().id).toIntent(targetContext, DEFAULT)
         }
+        i.putExtra(SingleFragmentActivity.FRAGMENT_NAME_EXTRA, NoteEditor::class.jvmName)
+        val args = Bundle().apply {
+            when (from) {
+                REVIEWER -> {
+                    putInt(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_EDIT)
+                    putLong(NoteEditor.EXTRA_CARD_ID, n.firstCard().id)
+                    putParcelable(AnkiActivity.FINISH_ANIMATION_EXTRA, DEFAULT as Parcelable)
+                }
+                DECK_LIST -> putInt(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_DECKPICKER)
+            }
+        }
+        i.putExtra(SingleFragmentActivity.FRAGMENT_ARGS_EXTRA, args)
         return super.startActivityNormallyOpenCollectionWithIntent(clazz, i)
     }
 
