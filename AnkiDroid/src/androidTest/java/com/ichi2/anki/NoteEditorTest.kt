@@ -15,12 +15,11 @@
  */
 package com.ichi2.anki
 
-import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
 import android.os.Build
-import androidx.test.ext.junit.rules.ActivityScenarioRule
-import androidx.test.platform.app.InstrumentationRegistry
+import android.os.Bundle
+import androidx.test.core.app.ActivityScenario
+import androidx.test.core.app.ApplicationProvider
 import com.ichi2.anki.testutil.GrantStoragePermission
 import com.ichi2.utils.KotlinCleanup
 import org.hamcrest.Matchers.*
@@ -32,19 +31,6 @@ import org.junit.rules.TestRule
 abstract class NoteEditorTest protected constructor() {
     @get:Rule
     var runtimePermissionRule: TestRule? = GrantStoragePermission.instance
-
-    @get:Rule
-    var activityRule: ActivityScenarioRule<NoteEditor>? = ActivityScenarioRule(
-        noteEditorIntent
-    )
-
-    private val noteEditorIntent: Intent
-        get() {
-            return Intent(targetContext, NoteEditor::class.java).apply {
-                component = ComponentName(targetContext, NoteEditor::class.java)
-                putExtra(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_DECKPICKER)
-            }
-        }
 
     @Before
     fun before() {
@@ -74,8 +60,6 @@ abstract class NoteEditorTest protected constructor() {
         }
     protected open val invalidSdks: List<Int>?
         get() = ArrayList()
-    protected val targetContext: Context
-        get() = InstrumentationRegistry.getInstrumentation().targetContext
 
     init {
         @KotlinCleanup("change to variable init")
@@ -85,8 +69,18 @@ abstract class NoteEditorTest protected constructor() {
         // and @Before executes after the rule.
         // So, disable the rules in the constructor, and ignore in before.
         if (invalidSdksImpl.contains(Build.VERSION.SDK_INT)) {
-            activityRule = null
             runtimePermissionRule = null
         }
+    }
+
+    fun launchFragment(): ActivityScenario<SingleFragmentActivity> {
+        val fragmentArgs = Bundle().apply {
+            putInt(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_DECKPICKER)
+        }
+
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val intent = SingleFragmentActivity.getIntent(context, NoteEditor::class, fragmentArgs)
+
+        return ActivityScenario.launch(intent)
     }
 }

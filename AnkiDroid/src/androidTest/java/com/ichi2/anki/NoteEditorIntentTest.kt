@@ -42,7 +42,7 @@ class NoteEditorIntentTest : InstrumentedTest() {
     var runtimePermissionRule: TestRule? = GrantStoragePermission.instance
 
     @get:Rule
-    var activityRuleIntent: ActivityScenarioRule<NoteEditor>? = ActivityScenarioRule(
+    var activityRuleIntent: ActivityScenarioRule<SingleFragmentActivity>? = ActivityScenarioRule(
         noteEditorTextIntent
     )
 
@@ -53,7 +53,8 @@ class NoteEditorIntentTest : InstrumentedTest() {
         val scenario = activityRuleIntent!!.scenario
         scenario.moveToState(Lifecycle.State.RESUMED)
 
-        onActivity(scenario) { editor ->
+        onActivity(scenario) { activity ->
+            val editor = activity.supportFragmentManager.fragments.first() as NoteEditor
             val currentFieldStrings = editor.currentFieldStrings
             MatcherAssert.assertThat(currentFieldStrings[0], Matchers.equalTo("sample text"))
         }
@@ -79,11 +80,11 @@ class NoteEditorIntentTest : InstrumentedTest() {
 
     @Throws(Throwable::class)
     private fun onActivity(
-        scenario: ActivityScenario<NoteEditor>,
-        noteEditorActivityAction: ActivityScenario.ActivityAction<NoteEditor>
+        scenario: ActivityScenario<SingleFragmentActivity>,
+        noteEditorActivityAction: ActivityScenario.ActivityAction<SingleFragmentActivity>
     ) {
         val wrapped = AtomicReference<Throwable?>(null)
-        scenario.onActivity { a: NoteEditor ->
+        scenario.onActivity { a ->
             try {
                 noteEditorActivityAction.perform(a)
             } catch (t: Throwable) {

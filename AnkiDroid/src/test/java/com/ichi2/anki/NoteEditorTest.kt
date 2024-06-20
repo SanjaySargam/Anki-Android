@@ -59,8 +59,9 @@ class NoteEditorTest : RobolectricTest() {
     @Test
     @Config(qualifiers = "en")
     fun verifyCardsList() {
-        val n = getNoteEditorEditingExistingBasicNote("Test", "Note", DECK_LIST)
-        assertThat("Cards list is correct", (n.findViewById<TextView>(R.id.CardEditorCardsButton)).text.toString(), equalTo("Cards: Card 1"))
+        val activity = getNoteEditorEditingExistingBasicNote("Test", "Note", DECK_LIST)
+        val n = activity.supportFragmentManager.fragments.first() as NoteEditor
+        assertThat("Cards list is correct", (n.requireView().findViewById<TextView>(R.id.CardEditorCardsButton)).text.toString(), equalTo("Cards: Card 1"))
     }
 
     @Test
@@ -68,10 +69,11 @@ class NoteEditorTest : RobolectricTest() {
         // Arrange
         val fieldIndex = 0
         val n = getNoteEditorEditingExistingBasicNote("Hello", "World", REVIEWER)
-        enterTextIntoField(n, fieldIndex, "Good Afternoon")
+        val editor = n.supportFragmentManager.fragments.first() as NoteEditor
+        enterTextIntoField(editor, fieldIndex, "Good Afternoon")
 
         // Act
-        openAdvancedTextEditor(n, fieldIndex)
+        openAdvancedTextEditor(editor, fieldIndex)
 
         // Assert
         val intent = shadowOf(n).nextStartedActivityForResult
@@ -81,9 +83,10 @@ class NoteEditorTest : RobolectricTest() {
 
     @Test
     fun errorSavingNoteWithNoFirstFieldDisplaysNoFirstField() = runTest {
-        val noteEditor = getNoteEditorAdding(NoteType.BASIC)
+        val activity = getNoteEditorAdding(NoteType.BASIC)
             .withNoFirstField()
             .build()
+        val noteEditor = activity.supportFragmentManager.fragments.first() as NoteEditor
         noteEditor.saveNote()
         val actualResourceId = noteEditor.snackbarErrorText
         assertThat(actualResourceId, equalTo(CollectionManager.TR.addingTheFirstFieldIsEmpty()))
@@ -91,10 +94,10 @@ class NoteEditorTest : RobolectricTest() {
 
     @Test
     fun testErrorMessageNull() = runTest {
-        val noteEditor = getNoteEditorAdding(NoteType.BASIC)
+        val activity = getNoteEditorAdding(NoteType.BASIC)
             .withNoFirstField()
             .build()
-
+        val noteEditor = activity.supportFragmentManager.fragments.first() as NoteEditor
         noteEditor.saveNote()
         assertThat(noteEditor.addNoteErrorMessage, equalTo(CollectionManager.TR.addingTheFirstFieldIsEmpty()))
 
@@ -129,9 +132,10 @@ class NoteEditorTest : RobolectricTest() {
 
     @Test
     fun errorSavingClozeNoteWithNoFirstFieldDisplaysClozeError() = runTest {
-        val noteEditor = getNoteEditorAdding(NoteType.CLOZE)
+        val activity = getNoteEditorAdding(NoteType.CLOZE)
             .withNoFirstField()
             .build()
+        val noteEditor = activity.supportFragmentManager.fragments.first() as NoteEditor
         noteEditor.saveNote()
         val actualResourceId = noteEditor.snackbarErrorText
         assertThat(actualResourceId, equalTo(CollectionManager.TR.addingTheFirstFieldIsEmpty()))
@@ -139,9 +143,10 @@ class NoteEditorTest : RobolectricTest() {
 
     @Test
     fun errorSavingClozeNoteWithNoClozeDeletionsDisplaysClozeError() = runTest {
-        val noteEditor = getNoteEditorAdding(NoteType.CLOZE)
+        val activity = getNoteEditorAdding(NoteType.CLOZE)
             .withFirstField("NoCloze")
             .build()
+        val noteEditor = activity.supportFragmentManager.fragments.first() as NoteEditor
         noteEditor.saveNote()
         val actualResourceId = noteEditor.snackbarErrorText
         assertThat(
@@ -152,9 +157,10 @@ class NoteEditorTest : RobolectricTest() {
 
     @Test
     fun errorSavingNoteWithNoTemplatesShowsNoCardsCreated() = runTest {
-        val noteEditor = getNoteEditorAdding(NoteType.BACK_TO_FRONT)
+        val activity = getNoteEditorAdding(NoteType.BACK_TO_FRONT)
             .withFirstField("front is not enough")
             .build()
+        val noteEditor = activity.supportFragmentManager.fragments.first() as NoteEditor
         noteEditor.saveNote()
         val actualResourceId = noteEditor.snackbarErrorText
         assertThat(actualResourceId, equalTo(getString(R.string.note_editor_no_cards_created)))
@@ -163,9 +169,10 @@ class NoteEditorTest : RobolectricTest() {
     @Test
     fun clozeNoteWithNoClozeDeletionsDoesNotSave() = runTest {
         val initialCards = cardCount
-        val editor = getNoteEditorAdding(NoteType.CLOZE)
+        val activity = getNoteEditorAdding(NoteType.CLOZE)
             .withFirstField("no cloze deletions")
             .build()
+        val editor = activity.supportFragmentManager.fragments.first() as NoteEditor
         editor.saveNote()
         assertThat(cardCount, equalTo(initialCards))
     }
@@ -173,9 +180,10 @@ class NoteEditorTest : RobolectricTest() {
     @Test
     fun clozeNoteWithClozeDeletionsDoesSave() = runTest {
         val initialCards = cardCount
-        val editor = getNoteEditorAdding(NoteType.CLOZE)
+        val activity = getNoteEditorAdding(NoteType.CLOZE)
             .withFirstField("{{c1::AnkiDroid}} is fantastic")
             .build()
+        val editor = activity.supportFragmentManager.fragments.first() as NoteEditor
         editor.saveNote()
         assertThat(cardCount, equalTo(initialCards + 1))
     }
@@ -185,9 +193,10 @@ class NoteEditorTest : RobolectricTest() {
     fun clozeNoteWithClozeInWrongFieldDoesNotSave() = runTest {
         // Anki Desktop blocks with "Continue?", we should just block to match the above test
         val initialCards = cardCount
-        val editor = getNoteEditorAdding(NoteType.CLOZE)
+        val activity = getNoteEditorAdding(NoteType.CLOZE)
             .withSecondField("{{c1::AnkiDroid}} is fantastic")
             .build()
+        val editor = activity.supportFragmentManager.fragments.first() as NoteEditor
         editor.saveNote()
         assertThat(cardCount, equalTo(initialCards))
     }
@@ -195,8 +204,8 @@ class NoteEditorTest : RobolectricTest() {
     @Test
     fun verifyStartupAndCloseWithNoCollectionDoesNotCrash() {
         enableNullCollection()
-        ActivityScenario.launchActivityForResult(NoteEditor::class.java).use { scenario ->
-            scenario.onActivity { noteEditor: NoteEditor ->
+        ActivityScenario.launchActivityForResult(SingleFragmentActivity::class.java).use { scenario ->
+            scenario.onActivity { noteEditor ->
                 noteEditor.onBackPressedDispatcher.onBackPressed()
                 assertThat("Pressing back should finish the activity", noteEditor.isFinishing)
             }
@@ -211,10 +220,12 @@ class NoteEditorTest : RobolectricTest() {
         col.config.set(CURRENT_DECK, currentDid)
         val n = super.addNoteUsingBasicModel("Test", "Note")
         n.notetype.put("did", currentDid)
-        val editor = getNoteEditorEditingExistingBasicNote("Test", "Note", DECK_LIST)
+        val activity1 = getNoteEditorEditingExistingBasicNote("Test", "Note", DECK_LIST)
+        val editor = activity1.supportFragmentManager.fragments.first() as NoteEditor
         col.config.set(CURRENT_DECK, Consts.DEFAULT_DECK_ID) // Change DID if going through default path
         val copyNoteIntent = getCopyNoteIntent(editor)
-        val newNoteEditor = super.startActivityNormallyOpenCollectionWithIntent(NoteEditor::class.java, copyNoteIntent)
+        val activity = super.startActivityNormallyOpenCollectionWithIntent(SingleFragmentActivity::class.java, copyNoteIntent)
+        val newNoteEditor = activity.supportFragmentManager.fragments.first() as NoteEditor
         assertThat("Selected deck ID should be the current deck id", editor.deckId, equalTo(currentDid))
         assertThat("Deck ID in the intent should be the selected deck id", copyNoteIntent.getLongExtra(NoteEditor.EXTRA_DID, -404L), equalTo(currentDid))
         assertThat("Deck ID in the new note should be the ID provided in the intent", newNoteEditor.deckId, equalTo(currentDid))
@@ -230,10 +241,11 @@ class NoteEditorTest : RobolectricTest() {
         val initFirstField = "Hello"
         val initSecondField = "unused"
         val newFirstField = "Hello" + FieldEditText.NEW_LINE + "World" // /r/n on Windows under Robolectric
-        val editor = getNoteEditorAdding(NoteType.BASIC)
+        val activity = getNoteEditorAdding(NoteType.BASIC)
             .withFirstField(initFirstField)
             .withSecondField(initSecondField)
             .build()
+        val editor = activity.supportFragmentManager.fragments.first() as NoteEditor
         assertThat(editor.currentFieldStrings.toList(), contains(initFirstField, initSecondField))
         editor.setFieldValueFromUi(0, newFirstField)
         assertThat(editor.currentFieldStrings.toList(), contains(newFirstField, initSecondField))
@@ -251,8 +263,9 @@ class NoteEditorTest : RobolectricTest() {
 
         val i = Intent(Intent.ACTION_PROCESS_TEXT)
         i.putExtra(Intent.EXTRA_PROCESS_TEXT, "hello\nworld")
-        val editor = startActivityNormallyOpenCollectionWithIntent(NoteEditor::class.java, i)
-        val actual = editor.currentFieldStrings.toList()
+        val editor = startActivityNormallyOpenCollectionWithIntent(SingleFragmentActivity::class.java, i)
+        val noteEditor = editor.supportFragmentManager.fragments.first() as NoteEditor
+        val actual = noteEditor.currentFieldStrings.toList()
 
         assertThat(actual, contains("hello\nworld", ""))
     }
@@ -260,14 +273,16 @@ class NoteEditorTest : RobolectricTest() {
     @Test
     fun previewWorksWithNoError() {
         // #6923 regression test - Low value - Could not make this fail as onSaveInstanceState did not crash under Robolectric.
-        val editor = getNoteEditorAddingNote(DECK_LIST, NoteEditor::class.java)
+        val activity = getNoteEditorAddingNote(DECK_LIST, SingleFragmentActivity::class.java)
+        val editor = activity.supportFragmentManager.fragments.first() as NoteEditor
         assertDoesNotThrow { runBlocking { editor.performPreview() } }
     }
 
     @Test
     fun clearFieldWorks() {
         // #7522
-        val editor = getNoteEditorAddingNote(DECK_LIST, NoteEditor::class.java)
+        val activity = getNoteEditorAddingNote(DECK_LIST, SingleFragmentActivity::class.java)
+        val editor = activity.supportFragmentManager.fragments.first() as NoteEditor
         editor.setFieldValueFromUi(1, "Hello")
         assertThat(editor.currentFieldStrings[1], equalTo("Hello"))
         editor.clearField(1)
@@ -276,7 +291,8 @@ class NoteEditorTest : RobolectricTest() {
 
     @Test
     fun insertIntoFocusedFieldStartsAtSelection() {
-        val editor = getNoteEditorAddingNote(DECK_LIST, NoteEditor::class.java)
+        val activity = getNoteEditorAddingNote(DECK_LIST, SingleFragmentActivity::class.java)
+        val editor = activity.supportFragmentManager.fragments.first() as NoteEditor
         val field: EditText = editor.getFieldForTest(0)
         editor.insertStringInField(field, "Hello")
         field.setSelection(3)
@@ -286,7 +302,8 @@ class NoteEditorTest : RobolectricTest() {
 
     @Test
     fun insertIntoFocusedFieldReplacesSelection() {
-        val editor = getNoteEditorAddingNote(DECK_LIST, NoteEditor::class.java)
+        val activity = getNoteEditorAddingNote(DECK_LIST, SingleFragmentActivity::class.java)
+        val editor = activity.supportFragmentManager.fragments.first() as NoteEditor
         val field: EditText = editor.getFieldForTest(0)
         editor.insertStringInField(field, "12345")
         field.setSelection(2, 3) // select "3"
@@ -297,7 +314,8 @@ class NoteEditorTest : RobolectricTest() {
     @Test
     fun insertIntoFocusedFieldReplacesSelectionIfBackwards() {
         // selections can be backwards if the user uses keyboards
-        val editor = getNoteEditorAddingNote(DECK_LIST, NoteEditor::class.java)
+        val activity = getNoteEditorAddingNote(DECK_LIST, SingleFragmentActivity::class.java)
+        val editor = activity.supportFragmentManager.fragments.first() as NoteEditor
         val field: EditText = editor.getFieldForTest(0)
         editor.insertStringInField(field, "12345")
         field.setSelection(3, 2) // select "3" (right to left)
@@ -308,13 +326,15 @@ class NoteEditorTest : RobolectricTest() {
     @Test
     fun defaultsToCapitalized() {
         // Requested in #3758, this seems like a sensible default
-        val editor = getNoteEditorAddingNote(DECK_LIST, NoteEditor::class.java)
+        val activity = getNoteEditorAddingNote(DECK_LIST, SingleFragmentActivity::class.java)
+        val editor = activity.supportFragmentManager.fragments.first() as NoteEditor
         assertThat("Fields should have their first word capitalized by default", editor.getFieldForTest(0).isCapitalized, equalTo(true))
     }
 
     @Test
     fun pasteHtmlAsPlainTextTest() {
-        val editor = getNoteEditorAddingNote(DECK_LIST, NoteEditor::class.java)
+        val activity = getNoteEditorAddingNote(DECK_LIST, SingleFragmentActivity::class.java)
+        val editor = activity.supportFragmentManager.fragments.first() as NoteEditor
         editor.setCurrentlySelectedModel(col.notetypes.byName("Basic")!!.getLong("id"))
         val field = editor.getFieldForTest(0)
         field.clipboard!!.setPrimaryClip(ClipData.newHtmlText("text", "text", """<span style="color: red">text</span>"""))
@@ -365,8 +385,9 @@ class NoteEditorTest : RobolectricTest() {
     @Test
     fun `can open with corrupt current deck - Issue 14096`() {
         col.config.set(CURRENT_DECK, '"' + "1688546411954" + '"')
-        getNoteEditorAddingNote(DECK_LIST, NoteEditor::class.java).apply {
-            assertThat("current deck is default after corruption", deckId, equalTo(DEFAULT_DECK_ID))
+        getNoteEditorAddingNote(DECK_LIST, SingleFragmentActivity::class.java).apply {
+            val editor = this.supportFragmentManager.fragments.first() as NoteEditor
+            assertThat("current deck is default after corruption", editor.deckId, equalTo(DEFAULT_DECK_ID))
         }
     }
 
@@ -374,8 +395,9 @@ class NoteEditorTest : RobolectricTest() {
     fun `can switch two image occlusion note types 15579`() {
         val otherOcclusion = getSecondImageOcclusionNoteType()
         getNoteEditorAdding(NoteType.IMAGE_OCCLUSION).build().apply {
-            val position = requireNotNull(noteTypeSpinner!!.getItemIndex(otherOcclusion.name)) { "could not find ${otherOcclusion.name}" }
-            noteTypeSpinner!!.setSelection(position)
+            val noteEditor = this.supportFragmentManager.fragments.first() as NoteEditor
+            val position = requireNotNull(noteEditor.noteTypeSpinner!!.getItemIndex(otherOcclusion.name)) { "could not find ${otherOcclusion.name}" }
+            noteEditor.noteTypeSpinner!!.setSelection(position)
         }
     }
 
@@ -395,8 +417,8 @@ class NoteEditorTest : RobolectricTest() {
         assertThat("current deck", note.firstCard().did, not(equalTo(homeDeckId)))
 
         // act
-        val editor = getNoteEditorEditingExistingBasicNote(note, REVIEWER, NoteEditor::class.java)
-
+        val activity = getNoteEditorEditingExistingBasicNote(note, REVIEWER, SingleFragmentActivity::class.java)
+        val editor = activity.supportFragmentManager.fragments.first() as NoteEditor
         // assert
         assertThat("current deck is the home deck", editor.deckId, equalTo(homeDeckId))
         assertThat("no unsaved changes", !editor.hasUnsavedChanges())
@@ -410,7 +432,8 @@ class NoteEditorTest : RobolectricTest() {
 
         assertThat("setup: deckId", col.notetypes.byName("Basic")!!.did, equalTo(1))
 
-        getNoteEditorAdding(NoteType.BASIC).build().also { editor ->
+        getNoteEditorAdding(NoteType.BASIC).build().also { activity ->
+            val editor = activity.supportFragmentManager.fragments.first() as NoteEditor
             editor.onDeckSelected(SelectableDeck(reversedDeckId, "Reversed"))
             editor.setField(0, "Hello")
             editor.saveNote()
@@ -421,7 +444,8 @@ class NoteEditorTest : RobolectricTest() {
         assertThat("a note was added", col.noteCount(), equalTo(1))
         assertThat("note type deck is updated", col.notetypes.byName("Basic")!!.did, equalTo(reversedDeckId))
 
-        getNoteEditorAdding(NoteType.BASIC).build().also { editor ->
+        getNoteEditorAdding(NoteType.BASIC).build().also { activity ->
+            val editor = activity.supportFragmentManager.fragments.first() as NoteEditor
             assertThat("Deck ID is remembered", editor.deckId, equalTo(reversedDeckId))
         }
     }
@@ -436,9 +460,10 @@ class NoteEditorTest : RobolectricTest() {
         assertThat("home deck", note.firstCard().oDid, equalTo(homeDeckId))
         assertThat("current deck", note.firstCard().did, not(equalTo(homeDeckId)))
 
-        getNoteEditorEditingExistingBasicNote(note, REVIEWER, NoteEditor::class.java).apply {
-            setField(0, "Hello")
-            saveNote()
+        getNoteEditorEditingExistingBasicNote(note, REVIEWER, SingleFragmentActivity::class.java).apply {
+            val editor = this.supportFragmentManager.fragments.first() as NoteEditor
+            editor.setField(0, "Hello")
+            editor.saveNote()
         }
 
         // ensure note is correctly setup
@@ -464,7 +489,7 @@ class NoteEditorTest : RobolectricTest() {
     }
 
     private fun getCopyNoteIntent(editor: NoteEditor): Intent {
-        val editorShadow = shadowOf(editor)
+        val editorShadow = shadowOf(editor.requireActivity())
         editor.copyNote()
         return editorShadow.peekNextStartedActivityForResult().intent
     }
@@ -509,7 +534,7 @@ class NoteEditorTest : RobolectricTest() {
         n.setFieldValueFromUi(i, newText)
     }
 
-    private fun <T : NoteEditor?> getNoteEditorAddingNote(from: FromScreen, clazz: Class<T>): T {
+    private fun <T : SingleFragmentActivity?> getNoteEditorAddingNote(from: FromScreen, clazz: Class<T>): T {
         ensureCollectionLoadIsSynchronous()
         val i = Intent()
         when (from) {
@@ -519,12 +544,12 @@ class NoteEditorTest : RobolectricTest() {
         return super.startActivityNormallyOpenCollectionWithIntent(clazz, i)
     }
 
-    private fun getNoteEditorEditingExistingBasicNote(front: String, back: String, from: FromScreen): NoteEditor {
+    private fun getNoteEditorEditingExistingBasicNote(front: String, back: String, from: FromScreen): SingleFragmentActivity {
         val n = super.addNoteUsingBasicModel(front, back)
-        return getNoteEditorEditingExistingBasicNote(n, from, NoteEditor::class.java)
+        return getNoteEditorEditingExistingBasicNote(n, from, SingleFragmentActivity::class.java)
     }
 
-    private fun <T : NoteEditor?> getNoteEditorEditingExistingBasicNote(n: Note, from: FromScreen, clazz: Class<T>): T {
+    private fun <T : SingleFragmentActivity?> getNoteEditorEditingExistingBasicNote(n: Note, from: FromScreen, clazz: Class<T>): T {
         var i = Intent()
         when (from) {
             REVIEWER -> {
@@ -553,8 +578,8 @@ class NoteEditorTest : RobolectricTest() {
         private val notetype: NotetypeJson
         private var firstField: String? = null
         private var secondField: String? = null
-        fun build(): NoteEditor {
-            val editor = build(NoteEditor::class.java)
+        fun build(): SingleFragmentActivity {
+            val editor = build(SingleFragmentActivity::class.java)
             advanceRobolectricLooper()
             advanceRobolectricLooper()
             advanceRobolectricLooper()
@@ -565,9 +590,10 @@ class NoteEditorTest : RobolectricTest() {
             return editor
         }
 
-        fun <T : NoteEditor?> build(clazz: Class<T>): T {
+        fun <T : SingleFragmentActivity?> build(clazz: Class<T>): T {
             col.notetypes.setCurrent(notetype)
-            val noteEditor = getNoteEditorAddingNote(REVIEWER, clazz)!!
+            val activity = getNoteEditorAddingNote(REVIEWER, clazz)!!
+            val noteEditor = activity.supportFragmentManager.fragments.first() as NoteEditor
             advanceRobolectricLooper()
             // image occlusion does not need a first field
             if (this.firstField != null) {
@@ -576,7 +602,7 @@ class NoteEditorTest : RobolectricTest() {
             if (secondField != null) {
                 noteEditor.setFieldValueFromUi(1, secondField)
             }
-            return noteEditor
+            return activity
         }
 
         fun withNoFirstField(): NoteEditorTestBuilder {

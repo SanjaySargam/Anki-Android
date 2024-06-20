@@ -49,17 +49,19 @@ class NoteEditorTabOrderTest : NoteEditorTest() {
     @Throws(Throwable::class)
     fun testTabOrder() {
         ensureCollectionLoaded()
-        val scenario = activityRule!!.scenario
+        val scenario = launchFragment()
         scenario.moveToState(Lifecycle.State.RESUMED)
 
-        onActivity(scenario) { editor: NoteEditor ->
-            sendKeyDownUp(editor, KeyEvent.KEYCODE_A)
-            sendKeyDownUp(editor, KeyEvent.KEYCODE_TAB)
-            sendKeyDownUp(editor, KeyEvent.KEYCODE_TAB)
-            sendKeyDownUp(editor, KeyEvent.KEYCODE_B)
+        onActivity(scenario) { activity ->
+            val editor = activity.supportFragmentManager.fragments.first() as NoteEditor
+            sendKeyDownUp(editor.requireActivity(), KeyEvent.KEYCODE_A)
+            sendKeyDownUp(editor.requireActivity(), KeyEvent.KEYCODE_TAB)
+            sendKeyDownUp(editor.requireActivity(), KeyEvent.KEYCODE_TAB)
+            sendKeyDownUp(editor.requireActivity(), KeyEvent.KEYCODE_B)
         }
 
-        onActivity(scenario) { editor: NoteEditor ->
+        onActivity(scenario) { activity ->
+            val editor = activity.supportFragmentManager.fragments.first() as NoteEditor
             val currentFieldStrings = editor.currentFieldStrings
             assertThat(currentFieldStrings[0], equalTo("a"))
             assertThat(currentFieldStrings[1], equalTo("b"))
@@ -77,11 +79,11 @@ class NoteEditorTabOrderTest : NoteEditorTest() {
 
     @Throws(Throwable::class)
     private fun onActivity(
-        scenario: ActivityScenario<NoteEditor>,
-        noteEditorActivityAction: ActivityAction<NoteEditor>
+        scenario: ActivityScenario<SingleFragmentActivity>,
+        noteEditorActivityAction: ActivityAction<SingleFragmentActivity>
     ) {
         val wrapped = AtomicReference<Throwable?>(null)
-        scenario.onActivity { a: NoteEditor ->
+        scenario.onActivity { a ->
             try {
                 noteEditorActivityAction.perform(a)
             } catch (t: Throwable) {
