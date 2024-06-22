@@ -489,7 +489,8 @@ class CardBrowserTest : RobolectricTest() {
 
     /** 7420  */
     @Test
-    fun addCardDeckISetIfDeckIsSelectedOnOpen() {
+    fun
+    addCardDeckISetIfDeckIsSelectedOnOpen() {
         val initialDid = addDeck("NotDefault", setAsSelected = true)
 
         val b = browserWithNoNewCards

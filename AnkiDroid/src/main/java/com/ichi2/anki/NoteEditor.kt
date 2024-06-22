@@ -52,6 +52,7 @@ import androidx.core.content.FileProvider
 import androidx.core.content.IntentCompat
 import androidx.core.content.edit
 import androidx.core.content.res.ResourcesCompat
+import androidx.core.os.BundleCompat
 import androidx.core.text.HtmlCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -467,8 +468,8 @@ class NoteEditor :
         configureMainToolbar()
 
         // Ensure the view is focusable and request focus
-        view.isFocusableInTouchMode = true
-        view.requestFocus()
+//        view.isFocusableInTouchMode = true
+//        view.requestFocus()
         // Set a key listener to handle key events
         view.setOnKeyListener { _, keyCode, event ->
             // Handle only key up events
@@ -915,10 +916,10 @@ class NoteEditor :
     }
 
     private fun fetchIntentInformation(intent: Intent) {
-        val extras = intent.extras ?: return
+        val extras = requireArguments()
         sourceText = arrayOfNulls(2)
         if (Intent.ACTION_PROCESS_TEXT == intent.action) {
-            val stringExtra = intent.getStringExtra(Intent.EXTRA_PROCESS_TEXT)
+            val stringExtra = extras.getString(Intent.EXTRA_PROCESS_TEXT)
             Timber.d("Obtained %s from intent: %s", stringExtra, Intent.EXTRA_PROCESS_TEXT)
             sourceText!![0] = stringExtra ?: ""
             sourceText!![1] = ""
@@ -1069,6 +1070,7 @@ class NoteEditor :
         saveToggleStickyMap()
 
         // treat add new note and edit existing note independently
+        Timber.i("addNote $addNote")
         if (addNote) {
             // load all of the fields into the note
             for (f in editFields!!) {
@@ -1159,11 +1161,9 @@ class NoteEditor :
             // and no longer using the legacy ActivityResultCallback/onActivityResult to
             // accept & update the note in the activity
             if (caller == CALLER_PREVIEWER_EDIT || caller == CALLER_EDIT) {
-                launchCatchingTask {
-                    withProgress(resources.getString(R.string.dialog_processing)) {
-                        undoableOp {
-                            updateNote(currentEditedCard!!.note())
-                        }
+                requireActivity().withProgress(resources.getString(R.string.dialog_processing)) {
+                    undoableOp {
+                        updateNote(currentEditedCard!!.note())
                     }
                 }
             }
@@ -1343,22 +1343,23 @@ class NoteEditor :
     }
 
     fun copyNote() {
-        openNewNoteEditor { intent: Intent ->
-            intent.putExtra(EXTRA_CONTENTS, fieldsText)
+        openNewNoteEditor { bundle: Bundle ->
+            bundle.putString(EXTRA_CONTENTS, fieldsText)
             if (selectedTags != null) {
-                intent.putExtra(EXTRA_TAGS, selectedTags!!.toTypedArray())
+                bundle.putStringArray(EXTRA_TAGS, selectedTags!!.toTypedArray())
             }
         }
     }
 
-    private fun openNewNoteEditor(intentEnricher: Consumer<Intent>) {
+    private fun openNewNoteEditor(intentEnricher: Consumer<Bundle>) {
         val arguments = Bundle().apply {
             putInt(EXTRA_CALLER, CALLER_NOTEEDITOR)
             putLong(EXTRA_DID, deckId)
         }
-        val intent = getIntent(requireContext(), arguments)
         // mutate event with additional properties
-        intentEnricher.accept(intent)
+        intentEnricher.accept(arguments)
+        val intent = getIntent(requireContext(), arguments)
+
         requestAddLauncher.launch(intent)
     }
 
@@ -1464,8 +1465,8 @@ class NoteEditor :
             CardTemplateNotetype.clearTempModelFiles()
 
             // Set the finish animation if there is one on the intent which created the activity
-            val animation = IntentCompat.getParcelableExtra(
-                intent!!,
+            val animation = BundleCompat.getParcelable(
+                requireArguments(),
                 AnkiActivity.FINISH_ANIMATION_EXTRA,
                 ActivityTransitionAnimation.Direction::class.java
             )
@@ -2550,7 +2551,7 @@ class NoteEditor :
                 .getBoolean(PREF_NOTE_EDITOR_SHOW_TOOLBAR, true)
         }
 
-        fun getIntent(context: Context, arguments: Bundle): Intent {
+        fun getIntent(context: Context, arguments: Bundle? = null): Intent {
             return SingleFragmentActivity.getIntent(context, NoteEditor::class, arguments)
         }
     }

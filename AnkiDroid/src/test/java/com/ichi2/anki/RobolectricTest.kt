@@ -22,7 +22,6 @@ import android.content.Context
 import android.content.DialogInterface.*
 import android.content.Intent
 import android.content.SharedPreferences
-import android.os.Bundle
 import android.os.Looper
 import android.widget.TextView
 import androidx.annotation.CallSuper
@@ -303,24 +302,24 @@ open class RobolectricTest : AndroidTest {
             return controller.get()
         }
 
-        protected fun startFragmentNormallyOpenCollectionWithIntent(testClass: RobolectricTest, clazz: Class<NoteEditor>?, bundle: Bundle?): NoteEditor {
-            if (AbstractFlashcardViewer::class.java.isAssignableFrom(clazz!!)) {
-                // fixes 'Don't know what to do with dataSource...' inside Sounds.kt
-                // solution from https://github.com/robolectric/robolectric/issues/4673
-                ShadowMediaPlayer.setMediaInfoProvider {
-                    ShadowMediaPlayer.MediaInfo(1, 0)
-                }
-            }
-            val scenario = FragmentScenario.launchInContainer(clazz, bundle)
-            advanceRobolectricLooperWithSleep()
-            testClass.saveScenarioForCleanup(scenario)
-
-            lateinit var fragment: NoteEditor
-            scenario.onFragment { frag ->
-                fragment = frag
-            }
-            return fragment
-        }
+//        protected fun startFragmentNormallyOpenCollectionWithIntent(testClass: RobolectricTest, clazz: Class<NoteEditor>?, bundle: Bundle?): NoteEditor {
+//            if (AbstractFlashcardViewer::class.java.isAssignableFrom(clazz!!)) {
+//                // fixes 'Don't know what to do with dataSource...' inside Sounds.kt
+//                // solution from https://github.com/robolectric/robolectric/issues/4673
+//                ShadowMediaPlayer.setMediaInfoProvider {
+//                    ShadowMediaPlayer.MediaInfo(1, 0)
+//                }
+//            }
+//            val scenario = FragmentScenario.launchInContainer(clazz, bundle)
+//            advanceRobolectricLooperWithSleep()
+//            testClass.saveScenarioForCleanup(scenario)
+//
+//            lateinit var fragment: NoteEditor
+//            scenario.onFragment { frag ->
+//                fragment = frag
+//            }
+//            return fragment
+//        }
     }
 
     val targetContext: Context
@@ -377,9 +376,9 @@ open class RobolectricTest : AndroidTest {
         return startActivityNormallyOpenCollectionWithIntent(this, clazz, i)
     }
 
-    internal fun startFragmentNormallyOpenCollectionWithIntent(clazz: Class<NoteEditor>?, bundle: Bundle?): NoteEditor {
-        return startFragmentNormallyOpenCollectionWithIntent(this, clazz, bundle)
-    }
+//    internal fun startFragmentNormallyOpenCollectionWithIntent(clazz: Class<NoteEditor>?, bundle: Bundle?): NoteEditor {
+//        return startFragmentNormallyOpenCollectionWithIntent(this, clazz, bundle)
+//    }
 
     internal inline fun <reified T : AnkiActivity?> startRegularActivity(): T {
         return startRegularActivity(null)
