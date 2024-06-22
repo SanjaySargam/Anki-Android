@@ -15,14 +15,14 @@
  */
 package com.ichi2.anki
 
-import android.app.Application
 import android.content.Intent
+import android.os.Bundle
+import android.os.Parcelable
 import android.view.Menu
 import androidx.annotation.CheckResult
-import androidx.core.content.IntentCompat
 import androidx.core.content.edit
+import androidx.core.os.BundleCompat
 import androidx.test.core.app.ActivityScenario
-import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ichi2.anim.ActivityTransitionAnimation
 import com.ichi2.anki.AbstractFlashcardViewer.Companion.EASE_3
@@ -57,7 +57,6 @@ import org.json.JSONArray
 import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.Shadows
 import timber.log.Timber
 import kotlin.test.junit5.JUnit5Asserter.assertNotNull
 
@@ -119,17 +118,24 @@ class ReviewerTest : RobolectricTest() {
     @Test
     fun testAddNoteAnimation() {
         // Arrange
-        val reviewer = startRegularActivity<Reviewer>()
         val fromGesture = Gesture.SWIPE_DOWN
 
         // Act
-        reviewer.addNote(fromGesture)
+        val animation = AbstractFlashcardViewer.getAnimationTransitionFromGesture(fromGesture)
+        val arguments = Bundle().apply {
+            putInt(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_REVIEWER_ADD)
+            putParcelable(
+                AnkiActivity.FINISH_ANIMATION_EXTRA,
+                ActivityTransitionAnimation.getInverseTransition(
+                    animation
+                ) as Parcelable
+            )
+        }
+        val activity = startActivityNormallyOpenCollectionWithIntent(SingleFragmentActivity::class.java, NoteEditor.getIntent(targetContext, arguments))
+        val noteEditor = activity.supportFragmentManager.findFragmentById(R.id.fragment_container) as NoteEditor
 
-        // Assert
-        val shadowApplication = Shadows.shadowOf(ApplicationProvider.getApplicationContext<Application>())
-        val intent = shadowApplication.nextStartedActivity
-        val actualAnimation = IntentCompat.getParcelableExtra(
-            intent,
+        val actualAnimation = BundleCompat.getParcelable(
+            noteEditor.requireArguments(),
             AnkiActivity.FINISH_ANIMATION_EXTRA,
             ActivityTransitionAnimation.Direction::class.java
         )

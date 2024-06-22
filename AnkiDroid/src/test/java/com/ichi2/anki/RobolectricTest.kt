@@ -29,6 +29,7 @@ import androidx.annotation.CheckResult
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.edit
 import androidx.fragment.app.DialogFragment
+import androidx.fragment.app.testing.FragmentScenario
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
@@ -74,8 +75,14 @@ open class RobolectricTest : AndroidTest {
 
     private val controllersForCleanup = ArrayList<ActivityController<*>>()
 
+    private val scenariosForCleanup = ArrayList<FragmentScenario<*>>()
+
     protected fun saveControllerForCleanup(controller: ActivityController<*>) {
         controllersForCleanup.add(controller)
+    }
+
+    protected fun saveScenarioForCleanup(scenario: FragmentScenario<*>) {
+        scenariosForCleanup.add(scenario)
     }
 
     protected open fun useInMemoryDatabase(): Boolean {
