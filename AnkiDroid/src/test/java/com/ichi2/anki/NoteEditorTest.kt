@@ -251,6 +251,7 @@ class NoteEditorTest : RobolectricTest() {
         ensureCollectionLoadIsSynchronous()
         val bundle = Bundle().apply {
             putString(Intent.EXTRA_PROCESS_TEXT, "hello\nworld")
+            putString("action", Intent.ACTION_PROCESS_TEXT)
         }
         val activity = startActivityNormallyOpenCollectionWithIntent(SingleFragmentActivity::class.java, NoteEditor.getIntent(targetContext, bundle))
         val editor = activity.supportFragmentManager.findFragmentById(R.id.fragment_container) as NoteEditor

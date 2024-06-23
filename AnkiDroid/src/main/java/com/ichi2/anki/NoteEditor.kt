@@ -403,7 +403,7 @@ class NoteEditor :
             }
             caller = requireArguments().getInt(EXTRA_CALLER)
             if (caller == CALLER_NO_CALLER) {
-                val action = intent.action
+                val action = requireArguments().getString("action")
                 if (ACTION_CREATE_FLASHCARD == action || ACTION_CREATE_FLASHCARD_SEND == action || Intent.ACTION_PROCESS_TEXT == action) {
                     caller = CALLER_NOTEEDITOR_INTENT_ADD
                 }
@@ -913,7 +913,8 @@ class NoteEditor :
     private fun fetchIntentInformation(intent: Intent) {
         val extras = requireArguments()
         sourceText = arrayOfNulls(2)
-        if (Intent.ACTION_PROCESS_TEXT == intent.action) {
+        val action = requireArguments().getString("action")
+        if (Intent.ACTION_PROCESS_TEXT == action) {
             val stringExtra = extras.getString(Intent.EXTRA_PROCESS_TEXT)
             Timber.d("Obtained %s from intent: %s", stringExtra, Intent.EXTRA_PROCESS_TEXT)
             sourceText!![0] = stringExtra ?: ""
