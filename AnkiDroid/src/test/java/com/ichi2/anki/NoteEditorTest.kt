@@ -214,10 +214,11 @@ class NoteEditorTest : RobolectricTest() {
         n.notetype.put("did", currentDid)
         val editor = getNoteEditorEditingExistingBasicNote("Test", "Note", DECK_LIST)
         col.config.set(CURRENT_DECK, Consts.DEFAULT_DECK_ID) // Change DID if going through default path
-        val activity = super.startActivityNormallyOpenCollectionWithIntent(SingleFragmentActivity::class.java, NoteEditor.getIntent(targetContext, editor.requireArguments()))
+        val copyNoteIntent = getCopyNoteIntent(editor)
+        val activity = super.startActivityNormallyOpenCollectionWithIntent(SingleFragmentActivity::class.java, NoteEditor.getIntent(targetContext, copyNoteIntent.extras))
         val newNoteEditor = activity.supportFragmentManager.findFragmentById(R.id.fragment_container) as NoteEditor
         assertThat("Selected deck ID should be the current deck id", editor.deckId, equalTo(currentDid))
-        assertThat("Deck ID in the intent should be the selected deck id", newNoteEditor.requireArguments().getLong(NoteEditor.EXTRA_DID, -404L), equalTo(currentDid))
+        assertThat("Deck ID in the intent should be the selected deck id", copyNoteIntent.getLongExtra(NoteEditor.EXTRA_DID, -404L), equalTo(currentDid))
         assertThat("Deck ID in the new note should be the ID provided in the intent", newNoteEditor.deckId, equalTo(currentDid))
     }
 
@@ -465,10 +466,10 @@ class NoteEditorTest : RobolectricTest() {
         }
     }
 
-    private fun getCopyNoteIntent(editor: NoteEditor): Bundle {
+    private fun getCopyNoteIntent(editor: NoteEditor): Intent {
         val editorShadow = shadowOf(editor.requireActivity())
         editor.copyNote()
-        return editorShadow.peekNextStartedActivityForResult().intent.extras ?: Bundle()
+        return editorShadow.peekNextStartedActivityForResult().intent
     }
 
     private fun Spinner.getItemIndex(toFind: Any): Int? {
