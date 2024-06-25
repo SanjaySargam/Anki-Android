@@ -401,7 +401,7 @@ class NoteEditor :
                 Timber.i("Intent contained an image")
                 requireArguments().putInt(EXTRA_CALLER, CALLER_ADD_IMAGE)
             }
-            caller = requireArguments().getInt(EXTRA_CALLER)
+            caller = requireArguments().getInt(EXTRA_CALLER, CALLER_NO_CALLER)
             if (caller == CALLER_NO_CALLER) {
                 val action = requireArguments().getString("action")
                 if (ACTION_CREATE_FLASHCARD == action || ACTION_CREATE_FLASHCARD_SEND == action || Intent.ACTION_PROCESS_TEXT == action) {
