@@ -176,8 +176,7 @@ class NoteEditor :
     private var currentEditedCard: Card? = null
     private var selectedTags: MutableList<String>? = null
 
-    private val getColUnsafe: Collection
-        get() = CollectionManager.getColUnsafe()
+    private lateinit var getColUnsafe: Collection
 
     private lateinit var ankiActivity: AnkiActivity
 
@@ -465,6 +464,7 @@ class NoteEditor :
             return
         }
         ankiActivity.startLoadingCollection()
+        getColUnsafe = CollectionManager.getColUnsafe()
         ankiActivity.setNavigationBarColor(R.attr.toolbarBackgroundColor)
 
         onCollectionLoaded(getColUnsafe)
