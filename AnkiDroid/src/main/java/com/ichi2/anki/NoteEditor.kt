@@ -449,7 +449,9 @@ class NoteEditor : AnkiFragment(R.layout.note_editor), DeckSelectionListener, Su
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         startLoadingCollection()
-        configureMainToolbar()
+        mainToolbar.setOnMenuItemClickListener(this)
+        mainToolbar.inflateMenu(R.menu.note_editor)
+        configureMainToolbar(mainToolbar.menu)
         // Onboarding must be initialised after creating view
         val onboarding = Onboarding.NoteEditor(this)
         onboarding.onCreate()
@@ -1229,10 +1231,7 @@ class NoteEditor : AnkiFragment(R.layout.note_editor), DeckSelectionListener, Su
         return super.onMenuItemClick(item)
     }
 
-    private fun configureMainToolbar() {
-        mainToolbar.setOnMenuItemClickListener(this)
-        mainToolbar.inflateMenu(R.menu.note_editor)
-        val menu = mainToolbar.menu
+    fun configureMainToolbar(menu: Menu) {
         if (addNote) {
             menu.findItem(R.id.action_copy_note).isVisible = false
             val iconVisible = allowSaveAndPreview()
