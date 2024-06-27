@@ -198,7 +198,7 @@ class NoteEditorTest : RobolectricTest() {
             putInt(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_DECKPICKER)
         }
         val intent = NoteEditor.getIntent(targetContext, bundle)
-        ActivityScenario.launch<SingleFragmentActivity>(intent).use { scenario ->
+        ActivityScenario.launchActivityForResult<SingleFragmentActivity>(intent).use { scenario ->
             scenario.onActivity { activity ->
                 val noteEditor = activity.supportFragmentManager.findFragmentById(R.id.fragment_container) as NoteEditor
                 noteEditor.requireActivity().onBackPressedDispatcher.onBackPressed()
