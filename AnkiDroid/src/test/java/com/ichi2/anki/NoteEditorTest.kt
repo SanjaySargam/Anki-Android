@@ -194,7 +194,10 @@ class NoteEditorTest : RobolectricTest() {
     @Test
     fun verifyStartupAndCloseWithNoCollectionDoesNotCrash() {
         enableNullCollection()
-        val intent = NoteEditor.getIntent(targetContext)
+        val bundle = Bundle().apply {
+            putInt(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_NO_CALLER)
+        }
+        val intent = NoteEditor.getIntent(targetContext, bundle)
         ActivityScenario.launch<SingleFragmentActivity>(intent).use { scenario ->
             scenario.onActivity { activity ->
                 val noteEditor = activity.supportFragmentManager.findFragmentById(R.id.fragment_container) as NoteEditor
@@ -215,7 +218,7 @@ class NoteEditorTest : RobolectricTest() {
         val editor = getNoteEditorEditingExistingBasicNote("Test", "Note", DECK_LIST)
         col.config.set(CURRENT_DECK, Consts.DEFAULT_DECK_ID) // Change DID if going through default path
         val copyNoteIntent = getCopyNoteIntent(editor)
-        val activity = super.startActivityNormallyOpenCollectionWithIntent(SingleFragmentActivity::class.java, NoteEditor.getIntent(targetContext, copyNoteIntent.extras))
+        val activity = super.startActivityNormallyOpenCollectionWithIntent(SingleFragmentActivity::class.java, NoteEditor.getIntent(targetContext, copyNoteIntent.extras!!))
         val newNoteEditor = activity.supportFragmentManager.findFragmentById(R.id.fragment_container) as NoteEditor
         assertThat("Selected deck ID should be the current deck id", editor.deckId, equalTo(currentDid))
         assertThat("Deck ID in the intent should be the selected deck id", copyNoteIntent.getLongExtra(NoteEditor.EXTRA_DID, -404L), equalTo(currentDid))

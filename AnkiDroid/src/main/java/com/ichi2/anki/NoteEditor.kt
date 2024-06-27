@@ -464,7 +464,12 @@ class NoteEditor :
             return
         }
         ankiActivity.startLoadingCollection()
-        getColUnsafe = CollectionManager.getColUnsafe()
+        launchCatchingTask {
+            withCol {
+                getColUnsafe = CollectionManager.getColUnsafe()
+            }
+        }
+
         ankiActivity.setNavigationBarColor(R.attr.toolbarBackgroundColor)
 
         onCollectionLoaded(getColUnsafe)
@@ -2544,7 +2549,7 @@ class NoteEditor :
                 .getBoolean(PREF_NOTE_EDITOR_SHOW_TOOLBAR, true)
         }
 
-        fun getIntent(context: Context, arguments: Bundle? = null): Intent {
+        fun getIntent(context: Context, arguments: Bundle): Intent {
             return SingleFragmentActivity.getIntent(context, NoteEditor::class, arguments)
         }
     }
