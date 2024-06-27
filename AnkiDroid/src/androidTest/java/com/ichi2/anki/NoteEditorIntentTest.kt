@@ -17,9 +17,9 @@ package com.ichi2.anki
 
 import android.content.Intent
 import android.os.Bundle
-import androidx.fragment.app.testing.FragmentScenario
-import androidx.fragment.app.testing.launchFragmentInContainer
 import androidx.lifecycle.Lifecycle
+import androidx.test.core.app.ActivityScenario
+import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ichi2.anki.NoteEditor.Companion.intentLaunchedWithImage
 import com.ichi2.anki.tests.InstrumentedTest
@@ -41,12 +41,18 @@ class NoteEditorIntentTest : InstrumentedTest() {
     @get:Rule
     var runtimePermissionRule: TestRule? = GrantStoragePermission.instance
 
+    @get:Rule
+    var activityRuleIntent: ActivityScenarioRule<SingleFragmentActivity>? = ActivityScenarioRule(
+        noteEditorTextIntent
+    )
+
     @Test
     @Flaky(OS.ALL, "Issue 15707 - java.lang.ArrayIndexOutOfBoundsException: length=0; index=0")
-    fun launchFragmentWithIntent() {
-        val scenario = launchFragmentInContainer<NoteEditor>(noteEditorTextBundle)
+    fun launchActivityWithIntent() {
+        val scenario = activityRuleIntent!!.scenario
         scenario.moveToState(Lifecycle.State.RESUMED)
-        onFragment(scenario) { editor ->
+        onActivity(scenario) { activity ->
+            val editor = activity.supportFragmentManager.findFragmentById(R.id.fragment_container) as NoteEditor
             val currentFieldStrings = editor.currentFieldStrings
             MatcherAssert.assertThat(currentFieldStrings[0], Matchers.equalTo("sample text"))
         }
@@ -61,26 +67,28 @@ class NoteEditorIntentTest : InstrumentedTest() {
         assertFalse(intentLaunchedWithImage(intent))
     }
 
-    private val noteEditorTextBundle: Bundle
+    private val noteEditorTextIntent: Intent
         get() {
-            return Bundle().apply {
+            val bundle = Bundle().apply {
                 putString(Intent.EXTRA_TEXT, "sample text")
+                putString("action", Intent.ACTION_SEND)
             }
+            return NoteEditor.getIntent(testContext, bundle)
         }
+}
 
-    @Throws(Throwable::class)
-    private fun onFragment(
-        scenario: FragmentScenario<NoteEditor>,
-        noteEditorFragmentAction: FragmentScenario.FragmentAction<NoteEditor>
-    ) {
-        val wrapped = AtomicReference<Throwable?>(null)
-        scenario.onFragment { fragment: NoteEditor ->
-            try {
-                noteEditorFragmentAction.perform(fragment)
-            } catch (t: Throwable) {
-                wrapped.set(t)
-            }
+@Throws(Throwable::class)
+private fun onActivity(
+    scenario: ActivityScenario<SingleFragmentActivity>,
+    noteEditorActivityAction: ActivityScenario.ActivityAction<SingleFragmentActivity>
+) {
+    val wrapped = AtomicReference<Throwable?>(null)
+    scenario.onActivity { a: SingleFragmentActivity ->
+        try {
+            noteEditorActivityAction.perform(a)
+        } catch (t: Throwable) {
+            wrapped.set(t)
         }
-        wrapped.get()?.let { throw it }
     }
+    wrapped.get()?.let { throw it }
 }

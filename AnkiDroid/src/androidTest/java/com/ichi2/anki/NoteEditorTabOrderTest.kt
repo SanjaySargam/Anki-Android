@@ -18,8 +18,8 @@ package com.ichi2.anki
 import android.app.Activity
 import android.view.KeyEvent
 import android.view.inputmethod.BaseInputConnection
-import androidx.fragment.app.testing.FragmentScenario
 import androidx.lifecycle.Lifecycle
+import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.Matchers.equalTo
@@ -48,17 +48,19 @@ class NoteEditorTabOrderTest : NoteEditorTest() {
     @Throws(Throwable::class)
     fun testTabOrder() {
         ensureCollectionLoaded()
-        val scenario = launchFragment()
+        val scenario = activityRule!!.scenario
         scenario.moveToState(Lifecycle.State.RESUMED)
 
-        onActivity(scenario) { editor: NoteEditor ->
+        onActivity(scenario) { activity: SingleFragmentActivity ->
+            val editor = activity.supportFragmentManager.findFragmentById(R.id.fragment_container) as NoteEditor
             sendKeyDownUp(editor.requireActivity(), KeyEvent.KEYCODE_A)
             sendKeyDownUp(editor.requireActivity(), KeyEvent.KEYCODE_TAB)
             sendKeyDownUp(editor.requireActivity(), KeyEvent.KEYCODE_TAB)
             sendKeyDownUp(editor.requireActivity(), KeyEvent.KEYCODE_B)
         }
 
-        onActivity(scenario) { editor: NoteEditor ->
+        onActivity(scenario) { activity: SingleFragmentActivity ->
+            val editor = activity.supportFragmentManager.findFragmentById(R.id.fragment_container) as NoteEditor
             val currentFieldStrings = editor.currentFieldStrings
             assertThat(currentFieldStrings[0], equalTo("a"))
             assertThat(currentFieldStrings[1], equalTo("b"))
@@ -76,11 +78,11 @@ class NoteEditorTabOrderTest : NoteEditorTest() {
 
     @Throws(Throwable::class)
     private fun onActivity(
-        scenario: FragmentScenario<NoteEditor>,
-        noteEditorActivityAction: FragmentScenario.FragmentAction<NoteEditor>
+        scenario: ActivityScenario<SingleFragmentActivity>,
+        noteEditorActivityAction: ActivityScenario.ActivityAction<SingleFragmentActivity>
     ) {
         val wrapped = AtomicReference<Throwable?>(null)
-        scenario.onFragment { a: NoteEditor ->
+        scenario.onActivity { a: SingleFragmentActivity ->
             try {
                 noteEditorActivityAction.perform(a)
             } catch (t: Throwable) {
