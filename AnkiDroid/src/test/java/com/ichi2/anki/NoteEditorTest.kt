@@ -28,6 +28,9 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import anki.config.ConfigKey
 import com.ichi2.anim.ActivityTransitionAnimation.Direction.DEFAULT
+import com.ichi2.anki.NoteEditor.Companion.CALLER_NOTEEDITOR
+import com.ichi2.anki.NoteEditor.Companion.EXTRA_CALLER
+import com.ichi2.anki.NoteEditor.Companion.EXTRA_DID
 import com.ichi2.anki.NoteEditorTest.FromScreen.DECK_LIST
 import com.ichi2.anki.NoteEditorTest.FromScreen.REVIEWER
 import com.ichi2.anki.api.AddContentApi.Companion.DEFAULT_DECK_ID
@@ -217,7 +220,11 @@ class NoteEditorTest : RobolectricTest() {
         n.notetype.put("did", currentDid)
         val editor = getNoteEditorEditingExistingBasicNote("Test", "Note", DECK_LIST)
         col.config.set(CURRENT_DECK, Consts.DEFAULT_DECK_ID) // Change DID if going through default path
-        val copyNoteIntent = getCopyNoteIntent(editor)
+//        val copyNoteIntent = getCopyNoteIntent(editor)
+        val copyNoteIntent = Bundle().apply {
+            putInt(EXTRA_CALLER, CALLER_NOTEEDITOR)
+            putLong(EXTRA_DID, editor.deckId)
+        }
         val activity = super.startActivityNormallyOpenCollectionWithIntent(SingleFragmentActivity::class.java, NoteEditor.getIntent(targetContext, copyNoteIntent))
         val newNoteEditor = activity.supportFragmentManager.findFragmentById(R.id.fragment_container) as NoteEditor
         assertThat("Selected deck ID should be the current deck id", editor.deckId, equalTo(currentDid))
