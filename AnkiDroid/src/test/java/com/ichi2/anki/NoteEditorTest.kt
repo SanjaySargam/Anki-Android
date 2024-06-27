@@ -217,10 +217,11 @@ class NoteEditorTest : RobolectricTest() {
         n.notetype.put("did", currentDid)
         val editor = getNoteEditorEditingExistingBasicNote("Test", "Note", DECK_LIST)
         col.config.set(CURRENT_DECK, Consts.DEFAULT_DECK_ID) // Change DID if going through default path
-        val activity = super.startActivityNormallyOpenCollectionWithIntent(SingleFragmentActivity::class.java, NoteEditor.getIntent(targetContext, editor.requireArguments()))
+        val copyNoteIntent = getCopyNoteIntent(editor)
+        val activity = super.startActivityNormallyOpenCollectionWithIntent(SingleFragmentActivity::class.java, NoteEditor.getIntent(targetContext, copyNoteIntent))
         val newNoteEditor = activity.supportFragmentManager.findFragmentById(R.id.fragment_container) as NoteEditor
         assertThat("Selected deck ID should be the current deck id", editor.deckId, equalTo(currentDid))
-        assertThat("Deck ID in the intent should be the selected deck id", newNoteEditor.requireArguments().getLong(NoteEditor.EXTRA_DID, -404L), equalTo(currentDid))
+        assertThat("Deck ID in the intent should be the selected deck id", copyNoteIntent.getLong(NoteEditor.EXTRA_DID, -404L), equalTo(currentDid))
         assertThat("Deck ID in the new note should be the ID provided in the intent", newNoteEditor.deckId, equalTo(currentDid))
     }
 
