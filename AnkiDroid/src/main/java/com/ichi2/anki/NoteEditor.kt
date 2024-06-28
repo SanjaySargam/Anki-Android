@@ -19,6 +19,7 @@
 package com.ichi2.anki
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -30,9 +31,11 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.Parcelable
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.*
+import android.view.View.GONE
 import android.view.View.OnFocusChangeListener
 import android.view.ViewGroup.MarginLayoutParams
 import android.widget.*
@@ -48,9 +51,10 @@ import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.PopupMenu
 import androidx.appcompat.widget.TooltipCompat
 import androidx.core.content.FileProvider
-import androidx.core.content.IntentCompat
 import androidx.core.content.edit
 import androidx.core.content.res.ResourcesCompat
+import androidx.core.os.BundleCompat
+import androidx.core.os.bundleOf
 import androidx.core.text.HtmlCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
@@ -62,6 +66,7 @@ import com.ichi2.anim.ActivityTransitionAnimation
 import com.ichi2.anki.CollectionManager.TR
 import com.ichi2.anki.CollectionManager.withCol
 import com.ichi2.anki.bottomsheet.ImageOcclusionBottomSheetFragment
+import com.ichi2.anki.browser.CardBrowserViewModel
 import com.ichi2.anki.dialogs.ConfirmationDialog
 import com.ichi2.anki.dialogs.DeckSelectionDialog.DeckSelectionListener
 import com.ichi2.anki.dialogs.DeckSelectionDialog.SelectableDeck
@@ -94,6 +99,7 @@ import com.ichi2.anki.snackbar.SnackbarBuilder
 import com.ichi2.anki.snackbar.showSnackbar
 import com.ichi2.anki.ui.setupNoteTypeSpinner
 import com.ichi2.anki.utils.ext.isImageOcclusion
+import com.ichi2.anki.utils.ext.sharedPrefs
 import com.ichi2.anki.utils.getTimestamp
 import com.ichi2.anki.widgets.DeckDropDownAdapter.SubtitleListener
 import com.ichi2.annotations.NeedsTest
@@ -128,7 +134,9 @@ import kotlin.math.roundToInt
  */
 @KotlinCleanup("Go through the class and select elements to fix")
 @KotlinCleanup("see if we can lateinit")
-class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, TagsDialogListener, BaseSnackbarBuilderProvider {
+class NoteEditor : AnkiFragment(R.layout.note_editor), DeckSelectionListener, SubtitleListener, TagsDialogListener, BaseSnackbarBuilderProvider {
+    private var isFragmentedActivity = false
+
     /** Whether any change are saved. E.g. multimedia, new card added, field changed and saved. */
     private var changed = false
     private var isTagsEdited = false
@@ -192,14 +200,13 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
 
     // save field index as key and text as value when toggle sticky clicked in Field Edit Text
     private var toggleStickyText: HashMap<Int, String?> = HashMap()
-    private val onboarding = Onboarding.NoteEditor(this)
 
     var clipboard: ClipboardManager? = null
 
     private val requestAddLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
         NoteEditorActivityResultCallback {
-            if (it.resultCode != RESULT_CANCELED) {
+            if (it.resultCode != Activity.RESULT_CANCELED) {
                 changed = true
             }
         }
@@ -209,7 +216,7 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
         ActivityResultContracts.StartActivityForResult(),
         @NeedsTest("test to guard against changes in the REQUEST_MULTIMEDIA_EDIT clause preventing text fields to be updated")
         NoteEditorActivityResultCallback { result ->
-            if (result.resultCode != RESULT_CANCELED) {
+            if (result.resultCode != Activity.RESULT_CANCELED) {
                 val col = getColUnsafe
                 val extras = result.data!!.extras ?: return@NoteEditorActivityResultCallback
                 val index = extras.getInt(MultimediaEditFieldActivity.EXTRA_RESULT_FIELD_INDEX)
@@ -279,7 +286,7 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
     private val requestIOEditorCloser = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
         NoteEditorActivityResultCallback { result ->
-            if (result.resultCode != RESULT_CANCELED) {
+            if (result.resultCode != Activity.RESULT_CANCELED) {
                 changed = true
                 if (!addNote) {
                     reloadRequired = true
@@ -354,7 +361,7 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
 
     override val baseSnackbarBuilder: SnackbarBuilder = {
         if (sharedPrefs().getBoolean(PREF_NOTE_EDITOR_SHOW_TOOLBAR, true)) {
-            anchorView = findViewById<Toolbar>(R.id.editor_toolbar)
+            anchorView = view.findViewById<Toolbar>(R.id.editor_toolbar)
         }
     }
 
@@ -365,18 +372,11 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
     // ----------------------------------------------------------------------------
     @KotlinCleanup("fix suppress")
     override fun onCreate(savedInstanceState: Bundle?) {
-        if (showedActivityFailedScreen(savedInstanceState)) {
-            return
-        }
-        tagsDialogFactory = TagsDialogFactory(this).attachToActivity<TagsDialogFactory>(this)
+        tagsDialogFactory = TagsDialogFactory(this).attachToFragmentManager<TagsDialogFactory>(parentFragmentManager)
         mediaRegistration = MediaRegistration(requireContext())
         super.onCreate(savedInstanceState)
-        if (!ensureStoragePermissions()) {
-            return
-        }
         fieldState.setInstanceState(savedInstanceState)
-        setContentView(R.layout.note_editor)
-        val intent = intent
+        val intent = requireActivity().intent
         if (savedInstanceState != null) {
             caller = savedInstanceState.getInt("caller")
             addNote = savedInstanceState.getBoolean("addNote")
@@ -395,14 +395,22 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
             }
             caller = requireArguments().getInt(EXTRA_CALLER)
             if (caller == CALLER_NO_CALLER) {
-                val action = intent.action
+                val action = requireArguments().getString("action")
                 if (ACTION_CREATE_FLASHCARD == action || ACTION_CREATE_FLASHCARD_SEND == action || Intent.ACTION_PROCESS_TEXT == action) {
                     caller = CALLER_NOTEEDITOR_INTENT_ADD
                 }
             }
         }
-        // Set up toolbar
-        toolbar = findViewById(R.id.editor_toolbar)
+    }
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        isFragmentedActivity = requireActivity().javaClass == CardBrowser::class.java
+        val view = inflater.inflate(R.layout.note_editor, container, false)
+        toolbar = view.findViewById(R.id.editor_toolbar)
         toolbar.apply {
             formatListener = TextFormatListener { formatter: Toolbar.TextFormatter ->
                 val currentFocus = requireActivity().currentFocus as? FieldEditText ?: return@TextFormatListener
@@ -418,11 +426,12 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
             )
             setIconColor(MaterialColors.getColor(requireContext(), R.attr.toolbarIconColor, 0))
         }
-        val mainView = findViewById<View>(android.R.id.content)
         // Enable toolbar
-        enableToolbar(mainView)
-        startLoadingCollection()
-        onboarding.onCreate()
+        enableToolbar(view)
+
+        if (isFragmentedActivity) {
+            mainToolbar.visibility = GONE
+        }
         // TODO this callback doesn't handle predictive back navigation!
         // see #14678, added to temporarily fix for a bug
         requireActivity().onBackPressedDispatcher.addCallback(this) {
@@ -430,13 +439,26 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
             closeCardEditorWithCheck()
         }
 
-        setNavigationBarColor(R.attr.toolbarBackgroundColor)
+        mainToolbar.setNavigationOnClickListener {
+            Timber.i("NoteEditor:: onBackPressed()")
+            closeCardEditorWithCheck()
+        }
+        return view
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        startLoadingCollection()
+        configureMainToolbar()
+        // Onboarding must be initialised after creating view
+        val onboarding = Onboarding.NoteEditor(this)
+        onboarding.onCreate()
     }
 
     @NeedsTest("Test when the user directly passes image to the edit note field")
     private fun handleImageIntent(data: Intent) {
         val imageUri = if (data.action == Intent.ACTION_SEND) {
-            IntentCompat.getParcelableExtra(data, Intent.EXTRA_STREAM, Uri::class.java)
+            BundleCompat.getParcelable(requireArguments(), Intent.EXTRA_STREAM, Uri::class.java)
         } else {
             data.data
         }
@@ -471,26 +493,28 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
     private val fieldsAsBundleForPreview: Bundle
         get() = NoteService.getFieldsAsBundleForPreview(editFields, shouldReplaceNewlines())
 
-    // Finish initializing the activity after the collection has been correctly loaded
+    // Finish initializing the fragment after the collection has been correctly loaded
     override fun onCollectionLoaded(col: Collection) {
         super.onCollectionLoaded(col)
-        val intent = intent
+        val view = requireView()
+        // Hide progressbar after collection loaded
+        val intent = requireActivity().intent
         Timber.d("NoteEditor() onCollectionLoaded: caller: %d", caller)
         registerExternalStorageListener()
-        fieldsLayoutContainer = findViewById(R.id.CardEditorEditFieldsLayout)
-        tagsButton = findViewById(R.id.CardEditorTagButton)
-        cardsButton = findViewById(R.id.CardEditorCardsButton)
+        fieldsLayoutContainer = view.findViewById(R.id.CardEditorEditFieldsLayout)
+        tagsButton = view.findViewById(R.id.CardEditorTagButton)
+        cardsButton = view.findViewById(R.id.CardEditorCardsButton)
         cardsButton!!.setOnClickListener {
             Timber.i("NoteEditor:: Cards button pressed. Opening template editor")
             showCardTemplateEditor()
         }
-        imageOcclusionButtonsContainer = findViewById(R.id.ImageOcclusionButtonsLayout)
-        editOcclusionsButton = findViewById(R.id.EditOcclusionsButton)
-        selectImageForOcclusionButton = findViewById(R.id.SelectImageForOcclusionButton)
-        pasteOcclusionImageButton = findViewById(R.id.PasteImageForOcclusionButton)
+        imageOcclusionButtonsContainer = view.findViewById(R.id.ImageOcclusionButtonsLayout)
+        editOcclusionsButton = view.findViewById(R.id.EditOcclusionsButton)
+        selectImageForOcclusionButton = view.findViewById(R.id.SelectImageForOcclusionButton)
+        pasteOcclusionImageButton = view.findViewById(R.id.PasteImageForOcclusionButton)
 
         try {
-            clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard = requireActivity().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         } catch (e: Exception) {
             Timber.w(e)
         }
@@ -519,7 +543,7 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
             CALLER_NOTEEDITOR_INTENT_ADD, INSTANT_NOTE_EDITOR -> {
                 fetchIntentInformation(intent)
                 if (sourceText == null) {
-                    activity?.finish()
+                    requireActivity().finish()
                     return
                 }
                 if ("Aedict Notepad" == sourceText!![0] && addFromAedict(sourceText!![1])) {
@@ -551,7 +575,7 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
                         }
                     }
                 imageOcclusionBottomSheet.show(
-                    supportFragmentManager,
+                    parentFragmentManager,
                     "ImageOcclusionBottomSheetFragment"
                 )
             }
@@ -584,11 +608,10 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
         }
 
         // Note type Selector
-        noteTypeSpinner = findViewById(R.id.note_type_spinner)
+        noteTypeSpinner = view.findViewById(R.id.note_type_spinner)
         allModelIds = setupNoteTypeSpinner(requireContext(), noteTypeSpinner!!, col)
-
         // Deck Selector
-        val deckTextView = findViewById<TextView>(R.id.CardEditorDeckText)
+        val deckTextView = view.findViewById<TextView>(R.id.CardEditorDeckText)
         // If edit mode and more than one card template distinguish between "Deck" and "Card deck"
         if (!addNote && editorNote!!.notetype.getJSONArray("tmpls").length() > 1) {
             deckTextView.setText(R.string.CardEditorCardDeck)
@@ -596,13 +619,15 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
         deckSpinnerSelection =
             DeckSpinnerSelection(
                 requireContext(),
-                findViewById(R.id.note_deck_spinner),
+                requireView().findViewById(R.id.note_deck_spinner),
                 showAllDecks = false,
                 alwaysShowDefault = true,
-                showFilteredDecks = false
+                showFilteredDecks = false,
+                fragmentManagerSupplier = { childFragmentManager }
             )
         deckSpinnerSelection!!.initializeNoteEditorDeckSpinner(col)
         deckId = requireArguments().getLong(EXTRA_DID, deckId)
+        requireActivity().actionBar?.setDisplayHomeAsUpEnabled(true)
         val getTextFromSearchView = requireArguments().getString(EXTRA_TEXT_FROM_SEARCH_VIEW)
         setDid(editorNote)
         setNote(editorNote, FieldChangeType.onActivityCreation(shouldReplaceNewlines()))
@@ -642,15 +667,16 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
                 }
             } else {
                 contents = requireArguments().getString(EXTRA_CONTENTS)
+                Timber.i("contentsss: $contents")
             }
             contents?.let { setEditFieldTexts(it) }
             tags?.let { setTags(it) }
-            if (caller == CALLER_ADD_IMAGE) handleImageIntent(intent)
+            if (caller == CALLER_ADD_IMAGE) handleImageIntent(intent!!)
         } else {
             noteTypeSpinner!!.onItemSelectedListener = EditNoteTypeListener()
-            setTitle(R.string.cardeditor_title_edit_card)
+            mainToolbar.setTitle(R.string.cardeditor_title_edit_card)
         }
-        findViewById<View>(R.id.CardEditorTagButton).setOnClickListener {
+        view.findViewById<View>(R.id.CardEditorTagButton)?.setOnClickListener {
             Timber.i("NoteEditor:: Tags button pressed... opening tags editor")
             showTagsDialog()
         }
@@ -683,7 +709,7 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
 
         if (caller == CALLER_IMG_OCCLUSION) {
             // val saveImageUri = ImageIntentManager.getImageUri()
-            val saveImageUri = IntentCompat.getParcelableExtra(intent, EXTRA_IMG_OCCLUSION, Uri::class.java)
+            val saveImageUri = BundleCompat.getParcelable(requireArguments(), EXTRA_IMG_OCCLUSION, Uri::class.java)
             if (saveImageUri != null) {
                 ImportUtils.getFileCachedCopy(requireContext(), saveImageUri)?.let { path ->
                     setupImageOcclusionEditor(path)
@@ -860,10 +886,11 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
     }
 
     private fun fetchIntentInformation(intent: Intent) {
-        val extras = intent.extras ?: return
+        val extras = requireArguments()
+        val action = extras.getString("action")
         sourceText = arrayOfNulls(2)
-        if (Intent.ACTION_PROCESS_TEXT == intent.action) {
-            val stringExtra = intent.getStringExtra(Intent.EXTRA_PROCESS_TEXT)
+        if (Intent.ACTION_PROCESS_TEXT == action) {
+            val stringExtra = extras.getString(Intent.EXTRA_PROCESS_TEXT)
             Timber.d("Obtained %s from intent: %s", stringExtra, Intent.EXTRA_PROCESS_TEXT)
             sourceText!![0] = stringExtra ?: ""
             sourceText!![1] = ""
@@ -1120,7 +1147,7 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
      */
     @NeedsTest("test changing note type")
     private fun changeNoteType(oldNotetype: NotetypeJson, newNotetype: NotetypeJson) = launchCatchingTask {
-        if (!userAcceptsSchemaChange()) return@launchCatchingTask
+        if (!ankiActivity.userAcceptsSchemaChange()) return@launchCatchingTask
 
         val noteId = editorNote!!.id
         undoableOp {
@@ -1144,53 +1171,8 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
         updateToolbar()
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.note_editor, menu)
-        if (addNote) {
-            menu.findItem(R.id.action_copy_note).isVisible = false
-            val iconVisible = allowSaveAndPreview()
-            menu.findItem(R.id.action_save).isVisible = iconVisible
-            menu.findItem(R.id.action_preview).isVisible = iconVisible
-        } else {
-            menu.findItem(R.id.action_add_note_from_note_editor).isVisible = true
-        }
-        if (editFields != null) {
-            for (i in editFields!!.indices) {
-                val fieldText = editFields!![i]!!.text
-                if (!fieldText.isNullOrEmpty()) {
-                    menu.findItem(R.id.action_copy_note).isEnabled = true
-                    break
-                } else if (i == editFields!!.size - 1) {
-                    menu.findItem(R.id.action_copy_note).isEnabled = false
-                }
-            }
-        }
-        menu.findItem(R.id.action_show_toolbar).isChecked =
-            !shouldHideToolbar()
-        menu.findItem(R.id.action_capitalize).isChecked =
-            this.sharedPrefs().getBoolean(PREF_NOTE_EDITOR_CAPITALIZE, true)
-        menu.findItem(R.id.action_scroll_toolbar).isChecked =
-            this.sharedPrefs().getBoolean(PREF_NOTE_EDITOR_SCROLL_TOOLBAR, true)
-        return super.onCreateOptionsMenu(menu)
-    }
-
-    /**
-     * When using the options such as image occlusion we don't need the menu's save/preview
-     * option to save/preview the card as it has a built in option and the user is notified
-     * when the card is saved successfully
-     */
-    private fun allowSaveAndPreview(): Boolean = when {
-        addNote && currentNotetypeIsImageOcclusion() -> false
-        else -> true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+    override fun onMenuItemClick(item: MenuItem): Boolean {
         when (item.itemId) {
-            android.R.id.home -> {
-                Timber.i("NoteEditor:: Home button pressed")
-                closeCardEditorWithCheck()
-                return true
-            }
             R.id.action_preview -> {
                 Timber.i("NoteEditor:: Preview button pressed")
                 if (allowSaveAndPreview()) {
@@ -1244,7 +1226,48 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
                 updateToolbar()
             }
         }
-        return super.onOptionsItemSelected(item)
+        return super.onMenuItemClick(item)
+    }
+
+    private fun configureMainToolbar() {
+        mainToolbar.setOnMenuItemClickListener(this)
+        mainToolbar.inflateMenu(R.menu.note_editor)
+        val menu = mainToolbar.menu
+        if (addNote) {
+            menu.findItem(R.id.action_copy_note).isVisible = false
+            val iconVisible = allowSaveAndPreview()
+            menu.findItem(R.id.action_save).isVisible = iconVisible
+            menu.findItem(R.id.action_preview).isVisible = iconVisible
+        } else {
+            menu.findItem(R.id.action_add_note_from_note_editor).isVisible = true
+        }
+        if (editFields != null) {
+            for (i in editFields!!.indices) {
+                val fieldText = editFields!![i]!!.text
+                if (!fieldText.isNullOrEmpty()) {
+                    menu.findItem(R.id.action_copy_note).isEnabled = true
+                    break
+                } else if (i == editFields!!.size - 1) {
+                    menu.findItem(R.id.action_copy_note).isEnabled = false
+                }
+            }
+        }
+        menu.findItem(R.id.action_show_toolbar).isChecked =
+            !shouldHideToolbar()
+        menu.findItem(R.id.action_capitalize).isChecked =
+            sharedPrefs().getBoolean(PREF_NOTE_EDITOR_CAPITALIZE, true)
+        menu.findItem(R.id.action_scroll_toolbar).isChecked =
+            sharedPrefs().getBoolean(PREF_NOTE_EDITOR_SCROLL_TOOLBAR, true)
+    }
+
+    /**
+     * When using the options such as image occlusion we don't need the menu's save/preview
+     * option to save/preview the card as it has a built in option and the user is notified
+     * when the card is saved successfully
+     */
+    private fun allowSaveAndPreview(): Boolean = when {
+        addNote && currentNotetypeIsImageOcclusion() -> false
+        else -> true
     }
 
     private fun toggleCapitalize(value: Boolean) {
@@ -1280,24 +1303,18 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
         }
 
     private fun addNewNote() {
-        openNewNoteEditor { }
+        launchNoteEditor(OpenNoteEditorDestination.AddNote(deckId)) { }
     }
 
     fun copyNote() {
-        openNewNoteEditor { intent: Intent ->
-            intent.putExtra(EXTRA_CONTENTS, fieldsText)
-            if (selectedTags != null) {
-                intent.putExtra(EXTRA_TAGS, selectedTags!!.toTypedArray())
-            }
-        }
+        launchNoteEditor(OpenNoteEditorDestination.CopyNote(deckId, fieldsText, selectedTags)) { }
     }
 
-    private fun openNewNoteEditor(intentEnricher: Consumer<Intent>) {
-        val intent = Intent(this@NoteEditor, NoteEditor::class.java)
-        intent.putExtra(EXTRA_CALLER, CALLER_NOTEEDITOR)
-        intent.putExtra(EXTRA_DID, deckId)
-        // mutate event with additional properties
-        intentEnricher.accept(intent)
+    private fun launchNoteEditor(arguments: OpenNoteEditorDestination, intentEnricher: Consumer<Bundle>) {
+        val intent = getIntent(requireContext(), arguments)
+        val bundle = arguments.toBundle()
+        // Mutate event with additional properties
+        intentEnricher.accept(bundle)
         requestAddLauncher.launch(intent)
     }
 
@@ -1379,9 +1396,9 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
 
     private fun closeNoteEditor(intent: Intent = Intent()) {
         val result: Int = if (changed) {
-            RESULT_OK
+            Activity.RESULT_OK
         } else {
-            RESULT_CANCELED
+            Activity.RESULT_CANCELED
         }
         if (reloadRequired) {
             intent.putExtra(RELOAD_REQUIRED_EXTRA_KEY, true)
@@ -1403,8 +1420,8 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
             CardTemplateNotetype.clearTempModelFiles()
 
             // Set the finish animation if there is one on the intent which created the activity
-            val animation = IntentCompat.getParcelableExtra(
-                intent!!,
+            val animation = BundleCompat.getParcelable(
+                requireArguments(),
                 AnkiActivity.FINISH_ANIMATION_EXTRA,
                 ActivityTransitionAnimation.Direction::class.java
             )
@@ -1422,8 +1439,9 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
         }
         val tags = ArrayList(getColUnsafe.tags.all())
         val selTags = ArrayList(selectedTags!!)
-        val dialog = tagsDialogFactory!!.newTagsDialog()
-            .withArguments(TagsDialog.DialogType.EDIT_TAGS, selTags, tags)
+        val dialog = with(requireContext()) {
+            tagsDialogFactory!!.newTagsDialog().withArguments(TagsDialog.DialogType.EDIT_TAGS, selTags, tags)
+        }
         showDialogFragment(dialog)
     }
 
@@ -1538,7 +1556,7 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
             }
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
                 if (i == 0) {
-                    findViewById<View>(R.id.note_deck_spinner).nextFocusForwardId = newEditText.id
+                    requireView().findViewById<View>(R.id.note_deck_spinner)?.nextFocusForwardId = newEditText.id
                 }
                 if (previous != null) {
                     previous.lastViewInTabOrder.nextFocusForwardId = newEditText.id
@@ -1878,7 +1896,7 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
     }
 
     @KotlinCleanup("remove 'requireNoNulls'")
-    private val fieldsText: String
+    val fieldsText: String
         get() {
             val fields = arrayOfNulls<String>(editFields!!.size)
             for (i in editFields!!.indices) {
@@ -1963,7 +1981,7 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
     }
 
     private fun updateToolbar() {
-        val editorLayout = findViewById<View>(R.id.note_editor_layout)
+        val editorLayout = requireView().findViewById<View>(R.id.note_editor_layout)
         val bottomMargin =
             if (shouldHideToolbar()) {
                 0
@@ -2290,6 +2308,7 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
     /* Uses only if mCurrentEditedCard is set, so from reviewer or card browser.*/
     private inner class EditNoteTypeListener : OnItemSelectedListener {
         override fun onItemSelected(parent: AdapterView<*>?, view: View?, pos: Int, id: Long) {
+            val view = view!!
             // Get the current model
             val noteModelId = currentEditedCard!!.noteType(getColUnsafe).getLong("id")
             // Get new model
@@ -2328,7 +2347,7 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
                 // Don't let the user change any other values at the same time as changing note type
                 selectedTags = editorNote!!.tags
                 updateTags()
-                findViewById<View>(R.id.CardEditorTagButton).isEnabled = false
+                view.findViewById<View>(R.id.CardEditorTagButton)?.isEnabled = false
                 // ((LinearLayout) findViewById(R.id.CardEditorCardsButton)).setEnabled(false);
                 deckSpinnerSelection!!.setEnabledActionBarSpinner(false)
                 deckSpinnerSelection!!.updateDeckPosition(currentEditedCard!!.did)
@@ -2336,7 +2355,7 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
             } else {
                 populateEditFields(FieldChangeType.refresh(shouldReplaceNewlines()), false)
                 updateCards(currentEditedCard!!.noteType(getColUnsafe))
-                findViewById<View>(R.id.CardEditorTagButton).isEnabled = true
+                view.findViewById<View>(R.id.CardEditorTagButton)?.isEnabled = true
                 // ((LinearLayout) findViewById(R.id.CardEditorCardsButton)).setEnabled(false);
                 deckSpinnerSelection!!.setEnabledActionBarSpinner(true)
             }
@@ -2470,6 +2489,12 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
         private const val PREF_NOTE_EDITOR_FONT_SIZE = "note_editor_font_size"
         private const val PREF_NOTE_EDITOR_CUSTOM_BUTTONS = "note_editor_custom_buttons"
 
+        fun newInstance(arguments: Bundle): NoteEditor {
+            return NoteEditor().apply {
+                this.arguments = arguments
+            }
+        }
+
         private fun shouldReplaceNewlines(): Boolean {
             return AnkiDroidApp.instance.sharedPrefs()
                 .getBoolean(PREF_NOTE_EDITOR_NEWLINE_REPLACE, true)
@@ -2486,6 +2511,100 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
         private fun shouldHideToolbar(): Boolean {
             return !AnkiDroidApp.instance.sharedPrefs()
                 .getBoolean(PREF_NOTE_EDITOR_SHOW_TOOLBAR, true)
+        }
+
+        fun getIntent(context: Context, arguments: OpenNoteEditorDestination): Intent {
+            return SingleFragmentActivity.getIntent(context, NoteEditor::class, arguments.toBundle())
+        }
+    }
+
+    /** TODO: Combine with NoteEditorDestination */
+    sealed interface OpenNoteEditorDestination {
+        fun toBundle(): Bundle
+
+        data class ImageOcclusion(val imageUri: Uri?) : OpenNoteEditorDestination {
+            override fun toBundle(): Bundle = bundleOf(
+                EXTRA_CALLER to CALLER_IMG_OCCLUSION,
+                EXTRA_IMG_OCCLUSION to imageUri
+            )
+        }
+
+        data class PassText(val sampleText: String) : OpenNoteEditorDestination {
+            override fun toBundle(): Bundle = bundleOf(
+                Intent.EXTRA_TEXT to sampleText
+            )
+        }
+
+        data class ProcessText(val sampleText: String) : OpenNoteEditorDestination {
+            override fun toBundle(): Bundle = bundleOf(
+                Intent.EXTRA_PROCESS_TEXT to sampleText,
+                "action" to Intent.ACTION_PROCESS_TEXT
+            )
+        }
+
+        data class AddNote(val deckId: DeckId? = null) : OpenNoteEditorDestination {
+            override fun toBundle(): Bundle = bundleOf(
+                EXTRA_CALLER to CALLER_DECKPICKER
+            ).also { bundle ->
+                deckId?.let { deckId -> bundle.putLong(EXTRA_DID, deckId) }
+            }
+        }
+
+        data class AddNoteFromCardBrowser(val viewModel: CardBrowserViewModel) : OpenNoteEditorDestination {
+            override fun toBundle(): Bundle {
+                val bundle = bundleOf(
+                    EXTRA_CALLER to CALLER_CARDBROWSER_ADD,
+                    EXTRA_TEXT_FROM_SEARCH_VIEW to viewModel.searchTerms
+                )
+                if (viewModel.lastDeckId?.let { id -> id > 0 } == true) {
+                    bundle.putLong(EXTRA_DID, viewModel.lastDeckId!!)
+                }
+                return bundle
+            }
+        }
+
+        data class AddNoteFromReviewer(val animation: ActivityTransitionAnimation.Direction? = null) : OpenNoteEditorDestination {
+            override fun toBundle(): Bundle = bundleOf(
+                EXTRA_CALLER to CALLER_REVIEWER_ADD
+            ).also { bundle ->
+                animation?.let { animation -> bundle.putParcelable(AnkiActivity.FINISH_ANIMATION_EXTRA, animation as Parcelable) }
+            }
+        }
+
+        data class AddInstantNote(val sharedText: String?) : OpenNoteEditorDestination {
+            override fun toBundle(): Bundle = bundleOf(
+                EXTRA_CALLER to INSTANT_NOTE_EDITOR,
+                Intent.EXTRA_TEXT to sharedText
+            )
+        }
+
+        data class EditCard(val cardId: CardId, val animation: ActivityTransitionAnimation.Direction) : OpenNoteEditorDestination {
+            override fun toBundle(): Bundle = bundleOf(
+                EXTRA_CALLER to CALLER_EDIT,
+                EXTRA_CARD_ID to cardId,
+                AnkiActivity.FINISH_ANIMATION_EXTRA to animation as Parcelable
+            )
+        }
+
+        data class EditNoteFromPreviewer(val cardId: Long) : OpenNoteEditorDestination {
+            override fun toBundle(): Bundle = bundleOf(
+                EXTRA_CALLER to CALLER_PREVIEWER_EDIT,
+                EXTRA_EDIT_FROM_CARD_ID to cardId
+            )
+        }
+
+        data class CopyNote(
+            val deckId: DeckId,
+            val fieldsText: String,
+            val tags: List<String>? = null
+        ) : OpenNoteEditorDestination {
+            override fun toBundle(): Bundle = bundleOf(
+                EXTRA_CALLER to CALLER_NOTEEDITOR,
+                EXTRA_DID to deckId,
+                EXTRA_CONTENTS to fieldsText
+            ).also { bundle ->
+                tags?.let { tags -> bundle.putStringArray(EXTRA_TAGS, tags.toTypedArray()) }
+            }
         }
     }
 }
