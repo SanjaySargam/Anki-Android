@@ -1429,7 +1429,14 @@ open class CardBrowser :
     private fun redrawAfterSearch() {
         Timber.i("CardBrowser:: Completed searchCards() Successfully")
         updateList()
-        loadNoteEditorFragmentIfFragmented(viewModel.cards[0].id)
+        fragmented = fragmented && viewModel.rowCount > 0
+        noteEditorFrame?.visibility = if (fragmented) {
+            loadNoteEditorFragmentIfFragmented(viewModel.cards[0].id)
+            View.VISIBLE
+        } else {
+            View.GONE
+        }
+        invalidateOptionsMenu()
         /*check whether mSearchView is initialized as it is lateinit property.*/
         if (searchView == null || searchView!!.isIconified) {
             restoreScrollPositionIfRequested()
