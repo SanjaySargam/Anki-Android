@@ -78,6 +78,14 @@ class IntentHandler : Activity() {
             SyncWorker.cancel(this)
         }
         when (launchType) {
+            LaunchType.ADD_NOTE -> runIfStoragePermissions {
+                handleAddNote(intent)
+                finish()
+            }
+            LaunchType.PASS_TEXT -> runIfStoragePermissions {
+                handlePassText(intent)
+                finish()
+            }
             LaunchType.FILE_IMPORT -> runIfStoragePermissions {
                 handleFileImport(fileIntent, reloadIntent, action)
                 finish()
@@ -156,6 +164,16 @@ class IntentHandler : Activity() {
         reloadIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         startActivity(reloadIntent)
         finish()
+    }
+
+    private fun handleAddNote(data: Intent) {
+        val intent = NoteEditor.getIntent(this, data.extras!!)
+        startActivity(intent)
+    }
+
+    private fun handlePassText(data: Intent) {
+        val intent = NoteEditor.getIntent(this, data.extras!!, data.action)
+        startActivity(intent)
     }
 
     private fun handleFileImport(intent: Intent, reloadIntent: Intent, action: String?) {
@@ -259,7 +277,13 @@ class IntentHandler : Activity() {
         /** image */
         IMAGE_IMPORT,
 
-        SYNC, REVIEW, COPY_DEBUG_INFO
+        SYNC, REVIEW, COPY_DEBUG_INFO,
+
+        /** Add Note Shortcut */
+        ADD_NOTE,
+
+        /** Share text to NoteEditor */
+        PASS_TEXT
     }
 
     companion object {
@@ -290,13 +314,18 @@ class IntentHandler : Activity() {
         @CheckResult
         fun getLaunchType(intent: Intent): LaunchType {
             val action = intent.action
-            return if (action == Intent.ACTION_SEND || Intent.ACTION_VIEW == action && isValidViewIntent(intent)) {
+            return if (intent.hasExtra(NoteEditor.EXTRA_CALLER)) {
+                LaunchType.ADD_NOTE
+            } else if (Intent.ACTION_SEND == action || Intent.ACTION_VIEW == action && isValidViewIntent(intent)) {
                 val mimeType = intent.resolveMimeType()
                 when {
                     mimeType?.startsWith("image/") == true -> LaunchType.IMAGE_IMPORT
                     mimeType == "text/tab-separated-values" || mimeType == "text/comma-separated-values" -> LaunchType.TEXT_IMPORT
+                    mimeType == "text/plain" -> LaunchType.PASS_TEXT
                     else -> LaunchType.FILE_IMPORT
                 }
+            } else if (action == NoteEditor.ACTION_CREATE_FLASHCARD || action == Intent.ACTION_PROCESS_TEXT) {
+                LaunchType.PASS_TEXT
             } else if ("com.ichi2.anki.DO_SYNC" == action) {
                 LaunchType.SYNC
             } else if (intent.hasExtra(ReminderService.EXTRA_DECK_ID)) {
@@ -326,6 +355,8 @@ class IntentHandler : Activity() {
 
         fun requiresCollectionAccess(launchType: LaunchType): Boolean {
             return when (launchType) {
+                LaunchType.PASS_TEXT,
+                LaunchType.ADD_NOTE,
                 LaunchType.SYNC,
                 LaunchType.REVIEW,
                 LaunchType.DEFAULT_START_APP_IF_NEW,
