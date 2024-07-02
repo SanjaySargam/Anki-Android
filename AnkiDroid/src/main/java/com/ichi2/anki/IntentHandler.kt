@@ -290,7 +290,7 @@ class IntentHandler : Activity() {
         @CheckResult
         fun getLaunchType(intent: Intent): LaunchType {
             val action = intent.action
-            return if (action == Intent.ACTION_SEND || Intent.ACTION_VIEW == action && isValidViewIntent(intent)) {
+            return if (Intent.ACTION_SEND == action || Intent.ACTION_VIEW == action && isValidViewIntent(intent)) {
                 val mimeType = intent.resolveMimeType()
                 when {
                     mimeType?.startsWith("image/") == true -> LaunchType.IMAGE_IMPORT
