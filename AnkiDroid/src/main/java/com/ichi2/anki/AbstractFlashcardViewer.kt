@@ -62,8 +62,7 @@ import com.ichi2.anki.dialogs.tags.TagsDialog
 import com.ichi2.anki.dialogs.tags.TagsDialogFactory
 import com.ichi2.anki.dialogs.tags.TagsDialogListener
 import com.ichi2.anki.model.CardStateFilter
-import com.ichi2.anki.noteeditor.EditCardDestination
-import com.ichi2.anki.noteeditor.toIntent
+import com.ichi2.anki.noteeditor.OpenNoteEditorDestination
 import com.ichi2.anki.pages.AnkiServer
 import com.ichi2.anki.pages.CongratsPage
 import com.ichi2.anki.pages.PostRequestHandler
@@ -778,7 +777,7 @@ abstract class AbstractFlashcardViewer :
             return
         }
         val animation = fromGesture.toAnimationTransition().invert()
-        val editCardIntent = EditCardDestination(currentCard!!.id).toIntent(this, animation)
+        val editCardIntent = OpenNoteEditorDestination.EditCard(currentCard!!.id, animation).getIntent(this)
         editCurrentCardLauncher.launch(editCardIntent)
     }
 

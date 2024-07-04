@@ -18,6 +18,7 @@ package com.ichi2.anki
 
 import android.app.Activity
 import android.os.Bundle
+import com.ichi2.anki.noteeditor.OpenNoteEditorDestination
 import com.ichi2.themes.Themes
 import com.ichi2.themes.Themes.disableXiaomiForceDarkMode
 import timber.log.Timber
@@ -40,7 +41,7 @@ class IntentHandler2 : Activity() {
             Timber.i("Intent contained an image")
             intent.putExtra(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_ADD_IMAGE)
         }
-        val noteEditorIntent = NoteEditor.getIntent(this, intent.extras!!, intent.action)
+        val noteEditorIntent = OpenNoteEditorDestination.PassArguments(intent.extras!!).getIntent(this, intent.action)
         noteEditorIntent.setDataAndType(intent.data, intent.type)
         startActivity(noteEditorIntent)
         finish()
