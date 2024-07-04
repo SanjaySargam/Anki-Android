@@ -100,6 +100,7 @@ import com.ichi2.anki.export.ExportDialogsFactory
 import com.ichi2.anki.export.ExportDialogsFactoryProvider
 import com.ichi2.anki.introduction.CollectionPermissionScreenLauncher
 import com.ichi2.anki.introduction.hasCollectionStoragePermissions
+import com.ichi2.anki.noteeditor.OpenNoteEditorDestination
 import com.ichi2.anki.notetype.ManageNotetypes
 import com.ichi2.anki.pages.AnkiPackageImporterFragment
 import com.ichi2.anki.pages.CongratsPage
@@ -1428,10 +1429,7 @@ open class DeckPicker :
     }
 
     fun addNote() {
-        val bundle = Bundle().apply {
-            putInt(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_DECKPICKER)
-        }
-        val intent = NoteEditor.getIntent(this, bundle)
+        val intent = OpenNoteEditorDestination.AddNote().getIntent(this)
         startActivity(intent)
     }
 

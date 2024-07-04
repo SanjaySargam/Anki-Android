@@ -33,6 +33,7 @@ import com.ichi2.anki.NoteEditorTest.FromScreen.REVIEWER
 import com.ichi2.anki.api.AddContentApi.Companion.DEFAULT_DECK_ID
 import com.ichi2.anki.dialogs.DeckSelectionDialog.SelectableDeck
 import com.ichi2.anki.multimediacard.activity.MultimediaEditFieldActivity
+import com.ichi2.anki.noteeditor.OpenNoteEditorDestination
 import com.ichi2.anki.utils.ext.isImageOcclusion
 import com.ichi2.libanki.Consts
 import com.ichi2.libanki.DeckId
@@ -194,10 +195,7 @@ class NoteEditorTest : RobolectricTest() {
     @Test
     fun verifyStartupAndCloseWithNoCollectionDoesNotCrash() {
         enableNullCollection()
-        val bundle = Bundle().apply {
-            putInt(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_NO_CALLER)
-        }
-        val intent = NoteEditor.getIntent(targetContext, bundle)
+        val intent = OpenNoteEditorDestination.AddNote().getIntent(targetContext)
         ActivityScenario.launchActivityForResult<SingleFragmentActivity>(intent).use { scenario ->
             scenario.onNoteEditor { noteEditor ->
                 noteEditor.requireActivity().onBackPressedDispatcher.onBackPressed()
@@ -515,12 +513,11 @@ class NoteEditorTest : RobolectricTest() {
 
     private fun getNoteEditorAddingNote(from: FromScreen): NoteEditor {
         ensureCollectionLoadIsSynchronous()
-        val bundle = Bundle().apply {
+        val bundle =
             when (from) {
-                REVIEWER -> putInt(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_REVIEWER_ADD)
-                DECK_LIST -> putInt(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_DECKPICKER)
+                REVIEWER -> OpenNoteEditorDestination.AddNoteFromReviewer().toBundle()
+                DECK_LIST -> OpenNoteEditorDestination.AddNote().toBundle()
             }
-        }
         return openNoteEditorWithArgs(bundle)
     }
 
@@ -530,17 +527,11 @@ class NoteEditorTest : RobolectricTest() {
     }
 
     private fun getNoteEditorEditingExistingBasicNote(n: Note, from: FromScreen): NoteEditor {
-        val bundle = Bundle()
-        when (from) {
-            REVIEWER -> {
-                bundle.putInt(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_EDIT)
-                bundle.putLong(NoteEditor.EXTRA_DID, n.firstCard().id)
-                bundle.putParcelable(AnkiActivity.FINISH_ANIMATION_EXTRA, DEFAULT)
+        val bundle =
+            when (from) {
+                REVIEWER -> OpenNoteEditorDestination.EditCard(n.firstCard().id, DEFAULT).toBundle()
+                DECK_LIST -> OpenNoteEditorDestination.AddNote().toBundle()
             }
-            DECK_LIST -> {
-                bundle.putInt(NoteEditor.EXTRA_CALLER, NoteEditor.CALLER_DECKPICKER)
-            }
-        }
         return openNoteEditorWithArgs(bundle)
     }
 

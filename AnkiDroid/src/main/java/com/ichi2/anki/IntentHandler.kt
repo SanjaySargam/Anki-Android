@@ -29,6 +29,7 @@ import androidx.core.content.FileProvider
 import androidx.core.content.IntentCompat
 import com.ichi2.anki.dialogs.DialogHandler.Companion.storeMessage
 import com.ichi2.anki.dialogs.DialogHandlerMessage
+import com.ichi2.anki.noteeditor.OpenNoteEditorDestination
 import com.ichi2.anki.preferences.sharedPrefs
 import com.ichi2.anki.servicelayer.ScopedStorageService
 import com.ichi2.anki.services.ReminderService
@@ -79,7 +80,7 @@ class IntentHandler : Activity() {
         }
         when (launchType) {
             LaunchType.ADD_NOTE -> runIfStoragePermissions {
-                handleAddNote(intent)
+                handleAddNote()
                 finish()
             }
             LaunchType.PASS_TEXT -> runIfStoragePermissions {
@@ -166,13 +167,13 @@ class IntentHandler : Activity() {
         finish()
     }
 
-    private fun handleAddNote(data: Intent) {
-        val intent = NoteEditor.getIntent(this, data.extras!!)
+    private fun handleAddNote() {
+        val intent = OpenNoteEditorDestination.AddNote().getIntent(this)
         startActivity(intent)
     }
 
     private fun handlePassText(data: Intent) {
-        val intent = NoteEditor.getIntent(this, data.extras!!, data.action)
+        val intent = OpenNoteEditorDestination.PassArguments(data.extras!!).getIntent(this, data.action)
         startActivity(intent)
     }
 

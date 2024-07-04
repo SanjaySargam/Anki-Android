@@ -40,6 +40,7 @@ import androidx.work.testing.SynchronousExecutor
 import androidx.work.testing.WorkManagerTestInitHelper
 import com.ichi2.anki.dialogs.DialogHandler
 import com.ichi2.anki.dialogs.utils.FragmentTestActivity
+import com.ichi2.anki.noteeditor.OpenNoteEditorDestination
 import com.ichi2.anki.preferences.sharedPrefs
 import com.ichi2.annotations.DuplicatedCode
 import com.ichi2.async.*
@@ -354,7 +355,7 @@ open class RobolectricTest : AndroidTest {
     }
 
     fun openNoteEditorWithArgs(arguments: Bundle, action: String? = null): NoteEditor {
-        val activity = startActivityNormallyOpenCollectionWithIntent(SingleFragmentActivity::class.java, NoteEditor.getIntent(targetContext, arguments, action))
+        val activity = startActivityNormallyOpenCollectionWithIntent(SingleFragmentActivity::class.java, OpenNoteEditorDestination.PassArguments(arguments).getIntent(targetContext, action))
         return activity.supportFragmentManager.findFragmentById(R.id.fragment_container) as NoteEditor
     }
 
