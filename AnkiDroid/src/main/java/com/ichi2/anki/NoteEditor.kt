@@ -82,6 +82,7 @@ import com.ichi2.anki.multimediacard.impl.MultimediaEditableNote
 import com.ichi2.anki.noteeditor.CustomToolbarButton
 import com.ichi2.anki.noteeditor.FieldState
 import com.ichi2.anki.noteeditor.FieldState.FieldChangeType
+import com.ichi2.anki.noteeditor.OpenNoteEditorDestination
 import com.ichi2.anki.noteeditor.Toolbar.TextFormatListener
 import com.ichi2.anki.noteeditor.Toolbar.TextWrapper
 import com.ichi2.anki.pages.ImageOcclusion
@@ -1313,22 +1314,18 @@ class NoteEditor : AnkiFragment(R.layout.note_editor), DeckSelectionListener, Su
     }
 
     fun copyNote() {
-        openNewNoteEditor { bundle: Bundle ->
-            bundle.putString(EXTRA_CONTENTS, fieldsText)
+        openNewNoteEditor { intent: Intent ->
+            intent.putExtra(EXTRA_CONTENTS, fieldsText)
             if (selectedTags != null) {
-                bundle.putStringArray(EXTRA_TAGS, selectedTags!!.toTypedArray())
+                intent.putExtra(EXTRA_TAGS, selectedTags!!.toTypedArray())
             }
         }
     }
 
-    private fun openNewNoteEditor(intentEnricher: Consumer<Bundle>) {
-        val bundle = Bundle().apply {
-            putInt(EXTRA_CALLER, CALLER_NOTEEDITOR)
-            putLong(EXTRA_DID, deckId)
-        }
-        val intent = getIntent(requireContext(), bundle)
+    private fun openNewNoteEditor(intentEnricher: Consumer<Intent>) {
+        val intent = OpenNoteEditorDestination.AddNote(deckId).getIntent(requireContext())
         // mutate event with additional properties
-        intentEnricher.accept(bundle)
+        intentEnricher.accept(intent)
         requestAddLauncher.launch(intent)
     }
 
