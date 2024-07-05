@@ -45,7 +45,6 @@ android {
 dependencies {
     implementation(project(":AnkiDroid"))
     implementation(libs.jakewharton.timber)
-    implementation(libs.core.ktx)
     compileOnly(libs.kotlinx.coroutines.core)
     compileOnly(libs.hamcrest)
     compileOnly(libs.junit.jupiter)
