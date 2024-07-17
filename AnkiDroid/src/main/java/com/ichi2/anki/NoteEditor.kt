@@ -21,6 +21,7 @@ package com.ichi2.anki
 import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.ClipData
+import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
@@ -66,7 +67,9 @@ import androidx.core.content.IntentCompat
 import androidx.core.content.edit
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.text.HtmlCompat
+import androidx.core.view.OnReceiveContentListener
 import androidx.core.view.isVisible
+import androidx.draganddrop.DropHelper
 import androidx.lifecycle.lifecycleScope
 import anki.config.ConfigKey
 import anki.notes.NoteFieldsCheckResponse
@@ -136,6 +139,8 @@ import com.ichi2.libanki.undoableOp
 import com.ichi2.libanki.utils.TimeManager
 import com.ichi2.utils.AdaptionUtil
 import com.ichi2.utils.ClipboardUtil
+import com.ichi2.utils.ClipboardUtil.MEDIA_MIME_TYPES
+import com.ichi2.utils.ClipboardUtil.hasMedia
 import com.ichi2.utils.HashUtil
 import com.ichi2.utils.ImageUtils
 import com.ichi2.utils.ImportUtils
@@ -162,7 +167,6 @@ import java.io.File
 import java.util.LinkedList
 import java.util.Locale
 import java.util.function.Consumer
-import kotlin.collections.ArrayList
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -336,6 +340,40 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
             }
         }
     )
+
+    /**
+     * Listener for handling content received via drag and drop or copy and paste.
+     * This listener processes URIs contained in the payload and attempts to paste the content into the target EditText view.
+     */
+    private val onReceiveContentListener = OnReceiveContentListener { view, payload ->
+        val pair = payload.partition { item -> item.uri != null }
+        val uriContent = pair.first
+        val remaining = pair.second
+
+        if (uriContent == null) {
+            return@OnReceiveContentListener remaining
+        }
+
+        val clip = uriContent.clip
+        val description = clip.description
+
+        if (!hasMedia(description)) {
+            return@OnReceiveContentListener remaining
+        }
+
+        for (j in 0 until clip.itemCount) {
+            val uri = clip.getItemAt(j).uri
+            try {
+                onPaste(view as EditText, uri, description)
+            } catch (e: Exception) {
+                Timber.w(e)
+                CrashReportService.sendExceptionReport(e, "NoteEditor::onMedia")
+                return@OnReceiveContentListener remaining
+            }
+        }
+
+        return@OnReceiveContentListener remaining
+    }
 
     private inner class NoteEditorActivityResultCallback(private val callback: (result: ActivityResult) -> Unit) : ActivityResultCallback<ActivityResult> {
         override fun onActivityResult(result: ActivityResult) {
@@ -610,7 +648,7 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
                 // TODO: Support all extensions
                 //  See https://github.com/ankitects/anki/blob/6f3550464d37aee1b8b784e431cbfce8382d3ce7/rslib/src/image_occlusion/imagedata.rs#L154
                 if (ClipboardUtil.hasImage(clipboard)) {
-                    val uri = ClipboardUtil.getImageUri(clipboard)
+                    val uri = ClipboardUtil.getUri(clipboard)
                     val i = Intent().apply {
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         clipData = ClipData.newUri(contentResolver, uri.toString(), uri)
@@ -1585,12 +1623,24 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
             val editLineView = editLines[i]
             customViewIds.add(editLineView.id)
             val newEditText = editLineView.editText
-            newEditText.setImagePasteListener { editText: EditText?, uri: Uri? ->
-                onImagePaste(
+            newEditText.setPasteListener { editText: EditText?, uri: Uri?, description: ClipDescription? ->
+                onPaste(
                     editText!!,
-                    uri!!
+                    uri!!,
+                    description!!
                 )
             }
+            DropHelper.configureView(
+                this,
+                editLineView,
+                MEDIA_MIME_TYPES,
+                DropHelper.Options.Builder()
+                    .setHighlightColor(R.color.material_lime_green_A700)
+                    .setHighlightCornerRadiusPx(0)
+                    .addInnerEditTexts(newEditText)
+                    .build(),
+                onReceiveContentListener
+            )
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
                 if (i == 0) {
                     findViewById<View>(R.id.note_deck_spinner).nextFocusForwardId = newEditText.id
@@ -1665,9 +1715,9 @@ class NoteEditor : AnkiActivity(), DeckSelectionListener, SubtitleListener, Tags
         )
     }
 
-    private fun onImagePaste(editText: EditText, uri: Uri): Boolean {
-        val imageTag = mediaRegistration!!.onImagePaste(uri) ?: return false
-        insertStringInField(editText, imageTag)
+    private fun onPaste(editText: EditText, uri: Uri, description: ClipDescription): Boolean {
+        val mediaTag = mediaRegistration!!.onPaste(uri, description) ?: return false
+        insertStringInField(editText, mediaTag)
         return true
     }
 

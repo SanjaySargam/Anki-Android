@@ -32,7 +32,10 @@ import timber.log.Timber
 
 object ClipboardUtil {
     // JPEG is sent via pasted content
-    val IMAGE_MIME_TYPES = arrayOf("image/gif", "image/png", "image/jpg", "image/jpeg")
+    private val IMAGE_MIME_TYPES = arrayOf("image/gif", "image/png", "image/jpg", "image/jpeg")
+    private val AUDIO_MIME_TYPES = arrayOf("audio/*")
+    private val VIDEO_MIME_TYPES = arrayOf("video/*")
+    val MEDIA_MIME_TYPES = arrayOf(*IMAGE_MIME_TYPES, *AUDIO_MIME_TYPES, *VIDEO_MIME_TYPES)
 
     fun hasImage(clipboard: ClipboardManager?): Boolean {
         return clipboard
@@ -48,14 +51,35 @@ object ClipboardUtil {
             ?: false
     }
 
+    fun hasMedia(clipboard: ClipboardManager?): Boolean {
+        return clipboard
+            ?.takeIf { it.hasPrimaryClip() }
+            ?.primaryClip
+            ?.let { hasMedia(it.description) }
+            ?: false
+    }
+
+    fun hasMedia(description: ClipDescription?): Boolean {
+        return description
+            ?.run { MEDIA_MIME_TYPES.any { hasMimeType(it) } }
+            ?: false
+    }
+
     private fun getFirstItem(clipboard: ClipboardManager?) = clipboard
         ?.takeIf { it.hasPrimaryClip() }
         ?.primaryClip
         ?.takeIf { it.itemCount > 0 }
         ?.getItemAt(0)
 
-    fun getImageUri(clipboard: ClipboardManager?): Uri? {
+    fun getUri(clipboard: ClipboardManager?): Uri? {
         return getFirstItem(clipboard)?.uri
+    }
+
+    fun getDescription(clipboard: ClipboardManager?): ClipDescription? {
+        return clipboard
+            ?.takeIf { it.hasPrimaryClip() }
+            ?.primaryClip
+            ?.description
     }
 
     @CheckResult
