@@ -473,9 +473,7 @@ class ModelFieldEditor : AnkiActivity(), LocaleSelectionDialogHandler {
                 // localeHintDialog() is safe to be called here without the check but we can't
                 // suppress @RequiresApi just for the method call, we would have to do it on
                 // handleAction() which is not ok
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    localeHintDialog()
-                }
+                localeHintDialog()
             }
         }
     }

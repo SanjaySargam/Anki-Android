@@ -13,7 +13,6 @@ import androidx.core.os.bundleOf
 import com.ichi2.anki.ModelFieldEditor
 import com.ichi2.anki.R
 import com.ichi2.anki.analytics.AnalyticsDialogFragment
-import com.ichi2.anki.dialogs.ModelEditorContextMenu.ModelEditorContextMenuAction.AddLanguageHint
 import com.ichi2.utils.create
 import timber.log.Timber
 
@@ -26,11 +25,8 @@ open class ModelEditorContextMenu : AnalyticsDialogFragment() {
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         super.onCreate(savedInstanceState)
         // add only the actions which can be done at the current API level
-        var availableItems = if (isAtLeastAtN()) {
-            ModelEditorContextMenuAction.entries.toList()
-        } else {
-            ModelEditorContextMenuAction.entries.filterNot { it == AddLanguageHint }
-        }
+        var availableItems = ModelEditorContextMenuAction.entries.toList()
+
         availableItems = availableItems.sortedBy { it.order }
 
         return AlertDialog.Builder(requireActivity()).create {
@@ -41,9 +37,6 @@ open class ModelEditorContextMenu : AnalyticsDialogFragment() {
             }
         }
     }
-
-    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
-    protected open fun isAtLeastAtN() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
 
     enum class ModelEditorContextMenuAction(val order: Int, @StringRes val actionTextId: Int) {
         Reposition(0, R.string.model_field_editor_reposition_menu),

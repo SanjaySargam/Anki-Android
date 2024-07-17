@@ -30,7 +30,6 @@ import android.graphics.Color
 import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.CancellationSignal
 import android.provider.DocumentsContract
@@ -216,9 +215,7 @@ class BasicImageFieldController : FieldControllerBase(), IFieldController {
         layout.addView(imageFileSizeWarning, ViewGroup.LayoutParams.MATCH_PARENT)
         layout.addView(btnGallery, ViewGroup.LayoutParams.MATCH_PARENT)
         // drew image appear far larger in preview in devices API < 24 #9439
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            layout.addView(btnDraw, ViewGroup.LayoutParams.MATCH_PARENT)
-        }
+        layout.addView(btnDraw, ViewGroup.LayoutParams.MATCH_PARENT)
         if (canUseCamera(context)) {
             layout.addView(btnCamera, ViewGroup.LayoutParams.MATCH_PARENT)
         }
@@ -929,13 +926,11 @@ class BasicImageFieldController : FieldControllerBase(), IFieldController {
         private fun getUriForFile(file: File, activity: Context): Uri {
             Timber.d("getUriForFile() %s", file)
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    return FileProvider.getUriForFile(
-                        activity,
-                        activity.applicationContext.packageName + ".apkgfileprovider",
-                        file
-                    )
-                }
+                return FileProvider.getUriForFile(
+                    activity,
+                    activity.applicationContext.packageName + ".apkgfileprovider",
+                    file
+                )
             } catch (e: Exception) {
                 // #6628 - What would cause this? Is the fallback is effective? Telemetry to diagnose more:
                 Timber.w(e, "getUriForFile failed on %s - attempting fallback", file)
