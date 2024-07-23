@@ -21,7 +21,6 @@ import android.os.Build
 import android.view.View
 import androidx.core.view.OnReceiveContentListener
 import androidx.draganddrop.DropHelper
-import com.ichi2.utils.ClipboardUtil.MEDIA_MIME_TYPES
 
 typealias DropHelperOptionsCompat = DropHelper.Options
 typealias DropHelperOptionsBuilder = DropHelper.Options.Builder
@@ -42,6 +41,7 @@ object DropHelperCompat {
     fun configureView(
         activity: Activity,
         view: View,
+        mimeType: Array<String>,
         options: DropHelperOptionsCompat,
         onReceiveContentListener: OnReceiveContentListener
     ) {
@@ -51,7 +51,7 @@ object DropHelperCompat {
         DropHelper.configureView(
             activity,
             view,
-            MEDIA_MIME_TYPES,
+            mimeType,
             options,
             onReceiveContentListener
         )

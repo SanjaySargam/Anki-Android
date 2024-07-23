@@ -152,6 +152,7 @@ import com.ichi2.libanki.note
 import com.ichi2.libanki.undoableOp
 import com.ichi2.utils.AdaptionUtil
 import com.ichi2.utils.ClipboardUtil
+import com.ichi2.utils.ClipboardUtil.MEDIA_MIME_TYPES
 import com.ichi2.utils.ClipboardUtil.hasMedia
 import com.ichi2.utils.ClipboardUtil.items
 import com.ichi2.utils.HashUtil
@@ -1671,6 +1672,7 @@ class NoteEditor : AnkiFragment(R.layout.note_editor), DeckSelectionListener, Su
             DropHelperCompat.configureView(
                 requireActivity(),
                 editLineView,
+                MEDIA_MIME_TYPES,
                 DropHelperOptionsBuilder()
                     .setHighlightColor(R.color.material_lime_green_A700)
                     .setHighlightCornerRadiusPx(0)

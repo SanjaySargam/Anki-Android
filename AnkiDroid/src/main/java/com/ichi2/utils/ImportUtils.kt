@@ -125,7 +125,7 @@ object ImportUtils {
         private fun handleFileImportInternal(context: Context, intent: Intent): ImportResult {
             val importPathUri = getDataUri(intent)
             return if (importPathUri != null) {
-                handleContentProviderFile(context, intent, importPathUri)
+                handleContentProviderFile(context, importPathUri, intent)
             } else {
                 ImportResult.fromErrorString(context.getString(R.string.import_error_handle_exception))
             }
@@ -150,10 +150,10 @@ object ImportUtils {
             return getFileCachedCopy(context, uri)
         }
 
-        private fun handleContentProviderFile(
+        fun handleContentProviderFile(
             context: Context,
-            intent: Intent,
-            importPathUri: Uri
+            importPathUri: Uri,
+            intent: Intent? = null
         ): ImportResult {
             // Note: intent.getData() can be null. Use data instead.
             if (!isValidImportType(context, importPathUri)) {
@@ -162,7 +162,7 @@ object ImportUtils {
             // Get the original filename from the content provider URI
             var filename = getFileNameFromContentProvider(context, importPathUri)
             // Hack to fix bug where ContentResolver not returning filename correctly
-            if (filename == null) {
+            if (filename == null && intent != null) {
                 if (intent.type == "application/apkg" || intent.type == "application/zip") {
                     // Set a dummy filename if MIME type provided or is a valid zip file
                     filename = "unknown_filename.apkg"
@@ -189,7 +189,7 @@ object ImportUtils {
                 }
             } else {
                 // Copy to temporary file
-                filename = ensureValidLength(filename)
+                filename = ensureValidLength(filename!!)
                 tempOutDir = Uri.fromFile(File(context.cacheDir, filename)).encodedPath!!
                 val errorMessage = if (copyFileToCache(context, importPathUri, tempOutDir)) {
                     null
