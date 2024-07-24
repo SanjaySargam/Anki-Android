@@ -7,6 +7,7 @@ import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ichi2.utils.ClipboardUtil.AUDIO_MIME_TYPES
 import com.ichi2.utils.ClipboardUtil.IMAGE_MIME_TYPES
 import com.ichi2.utils.ClipboardUtil.VIDEO_MIME_TYPES
@@ -16,7 +17,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
 
+@RunWith(AndroidJUnit4::class)
 class ClipboardUtilTest {
 
     private lateinit var clipboardManager: ClipboardManager
