@@ -32,40 +32,69 @@ import timber.log.Timber
 
 object ClipboardUtil {
     // JPEG is sent via pasted content
-    val IMAGE_MIME_TYPES = arrayOf("image/gif", "image/png", "image/jpg", "image/jpeg")
+    val IMAGE_MIME_TYPES = arrayOf("image/*")
+    val AUDIO_MIME_TYPES = arrayOf("audio/*")
+    val VIDEO_MIME_TYPES = arrayOf("video/*")
+    val MEDIA_MIME_TYPES = arrayOf(*IMAGE_MIME_TYPES, *AUDIO_MIME_TYPES, *VIDEO_MIME_TYPES)
 
     fun hasImage(clipboard: ClipboardManager?): Boolean {
-        return clipboard
-            ?.takeIf { it.hasPrimaryClip() }
-            ?.primaryClip
+        return clipboard?.primaryClip
             ?.let { hasImage(it.description) }
             ?: false
     }
 
+    /**
+     * Checks if the clipboard contains an image.
+     * This method may return `false` for SVG images.
+     */
     fun hasImage(description: ClipDescription?): Boolean {
         return description
             ?.run { IMAGE_MIME_TYPES.any { hasMimeType(it) } }
             ?: false
     }
 
-    private fun getFirstItem(clipboard: ClipboardManager?) = clipboard
-        ?.takeIf { it.hasPrimaryClip() }
-        ?.primaryClip
+    private fun ClipboardManager?.getFirstItem() = this?.primaryClip
         ?.takeIf { it.itemCount > 0 }
         ?.getItemAt(0)
 
     fun getUri(clipboard: ClipboardManager?): Uri? {
-        return getFirstItem(clipboard)?.uri
+        return clipboard.getFirstItem()?.uri
+    }
+
+    fun hasSVG(description: ClipDescription): Boolean {
+        return description.hasMimeType("image/svg+xml")
+    }
+
+    fun hasMedia(clipboard: ClipboardManager?): Boolean {
+        return clipboard?.primaryClip
+            ?.let { hasMedia(it.description) }
+            ?: false
+    }
+
+    fun hasMedia(description: ClipDescription?): Boolean {
+        return description
+            ?.run { MEDIA_MIME_TYPES.any { hasMimeType(it) } }
+            ?: false
+    }
+
+    fun ClipData.items() = sequence {
+        for (j in 0 until itemCount) {
+            yield(getItemAt(j))
+        }
+    }
+
+    fun getDescription(clipboard: ClipboardManager?): ClipDescription? {
+        return clipboard?.primaryClip?.description
     }
 
     @CheckResult
     fun getText(clipboard: ClipboardManager?): CharSequence? {
-        return getFirstItem(clipboard)?.text
+        return clipboard.getFirstItem()?.text
     }
 
     @CheckResult
     fun getPlainText(clipboard: ClipboardManager?, context: Context): CharSequence? {
-        return getFirstItem(clipboard)?.coerceToText(context)
+        return clipboard.getFirstItem()?.coerceToText(context)
     }
 }
 
