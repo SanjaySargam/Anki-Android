@@ -90,14 +90,14 @@ class MediaRegistration(private val context: Context) {
             val message = if (isImage) {
                 context.getString(
                     R.string.note_editor_media_too_large,
-                    context.getString(R.string.note_editor_image),
-                    context.getString(R.string.note_editor_image)
+                    context.getString(R.string.multimedia_editor_field_editing_image).lowercase(),
+                    context.getString(R.string.multimedia_editor_field_editing_image).lowercase()
                 )
             } else {
                 context.getString(
                     R.string.note_editor_media_too_large,
-                    context.getString(R.string.note_editor_media),
-                    context.getString(R.string.note_editor_media)
+                    context.getString(R.string.media).lowercase(),
+                    context.getString(R.string.media).lowercase()
                 )
             }
             showThemedToast(context, message, false)

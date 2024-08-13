@@ -241,8 +241,6 @@
     <string name="remove_toolbar_item">Remove Toolbar Item?</string>
 
     <string name="note_editor_media_too_large">The %1$s is too large, please insert the %2$s manually</string>
-    <string name="note_editor_image">image</string>
-    <string name="note_editor_media">media</string>
     <string name="ankidroid_cannot_open_after_backup_try_again"
         comment="After an Android backup is restored, AnkiDroid opens and shows this message.
         Opening AnkiDroid again will work correctly">
