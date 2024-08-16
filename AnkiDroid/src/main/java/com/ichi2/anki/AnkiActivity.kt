@@ -54,6 +54,7 @@ import com.ichi2.anki.preferences.sharedPrefs
 import com.ichi2.anki.snackbar.showSnackbar
 import com.ichi2.anki.workarounds.AppLoadedFromBackupWorkaround.showedActivityFailedScreen
 import com.ichi2.async.CollectionLoader
+import com.ichi2.compat.CompatV24
 import com.ichi2.compat.customtabs.CustomTabActivityHelper
 import com.ichi2.compat.customtabs.CustomTabsFallback
 import com.ichi2.compat.customtabs.CustomTabsHelper
@@ -586,6 +587,11 @@ open class AnkiActivity : AppCompatActivity, SimpleMessageDialogListener {
         finish()
         return false
     }
+
+    /**
+     * Lists of shortcuts for this fragment, and the IdRes of the name of this shortcut group.
+     */
+    open val shortcuts: CompatV24.ShortcutGroup? = null
 
     companion object {
         const val DIALOG_FRAGMENT_TAG = "dialog"

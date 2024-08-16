@@ -29,6 +29,7 @@ import android.os.SystemClock
 import android.text.TextUtils
 import android.util.TypedValue
 import android.view.KeyEvent
+import android.view.KeyboardShortcutGroup
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
@@ -115,7 +116,10 @@ import com.ichi2.anki.utils.roundedTimeSpanUnformatted
 import com.ichi2.anki.widgets.DeckDropDownAdapter.SubtitleListener
 import com.ichi2.annotations.NeedsTest
 import com.ichi2.async.renderBrowserQA
+import com.ichi2.compat.CompatHelper
 import com.ichi2.compat.CompatHelper.Companion.registerReceiverCompat
+import com.ichi2.compat.CompatV24
+import com.ichi2.compat.CompatV24.Shortcut
 import com.ichi2.libanki.Card
 import com.ichi2.libanki.CardId
 import com.ichi2.libanki.ChangeManager
@@ -147,6 +151,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import net.ankiweb.rsdroid.RustCleanup
+import net.ankiweb.rsdroid.Translations
 import timber.log.Timber
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -631,6 +636,16 @@ open class CardBrowser :
         viewModel.setDeckId(deckId)
     }
 
+    override fun onProvideKeyboardShortcuts(
+        data: MutableList<KeyboardShortcutGroup>,
+        menu: Menu?,
+        deviceId: Int
+    ) {
+        val shortcutGroups = CompatHelper.compat.getShortcuts(this)
+        data.addAll(shortcutGroups)
+        super.onProvideKeyboardShortcuts(data, menu, deviceId)
+    }
+
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
         // This method is called even when the user is typing in the search text field.
         // So we must ensure that all shortcuts uses a modifier.
@@ -672,6 +687,9 @@ open class CardBrowser :
                 if (event.isCtrlPressed) {
                     Timber.i("Ctrl+K: Toggle Mark")
                     toggleMark()
+                    return true
+                } else if (event.isAltPressed) {
+                    CompatHelper.compat.showKeyboardShortcutsDialog(this)
                     return true
                 }
             }
@@ -789,6 +807,12 @@ open class CardBrowser :
                 }
             }
         }
+
+        // Show snackbar only if a modifier key is pressed and the keyCode is an unmapped alphabet key
+        if ((event.isCtrlPressed || event.isAltPressed || event.isShiftPressed) && keyCode in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z) {
+            showSnackbar(R.string.show_shortcuts_message, Snackbar.LENGTH_SHORT)
+        }
+
         return super.onKeyUp(keyCode, event)
     }
 
@@ -2369,6 +2393,41 @@ open class CardBrowser :
             refreshAfterUndo()
         }
     }
+
+    override val shortcuts = CompatV24.ShortcutGroup(
+        listOf(
+            Shortcut("Ctrl+Shift+A", R.string.edit_tags_dialog),
+            Shortcut("Ctrl+A", R.string.card_browser_select_all),
+            Shortcut("Ctrl+Shift+E", Translations::exportingExport),
+            Shortcut("Ctrl+E", R.string.menu_add_note),
+            Shortcut("E", R.string.cardeditor_title_edit_card),
+            Shortcut("Ctrl+D", R.string.card_browser_change_deck),
+            Shortcut("Ctrl+K", Translations::browsingToggleMark),
+            Shortcut("Ctrl+Alt+R", Translations::browsingReschedule),
+            Shortcut("DEL", R.string.delete_card_title),
+            Shortcut("Ctrl+Alt+N", R.string.reset_card_dialog_title),
+            Shortcut("Ctrl+Alt+T", R.string.toggle_cards_notes),
+            Shortcut("T", R.string.card_browser_search_by_tag),
+            Shortcut("Ctrl+Shift+S", Translations::actionsReposition),
+            Shortcut("Ctrl+Alt+S", R.string.card_browser_list_my_searches),
+            Shortcut("Ctrl+S", R.string.card_browser_list_my_searches_save),
+            Shortcut("Alt+S", R.string.card_browser_show_suspended),
+            Shortcut("Ctrl+Shift+J", Translations::browsingToggleBury),
+            Shortcut("Ctrl+J", Translations::browsingToggleSuspend),
+            Shortcut("Ctrl+Shift+I", Translations::actionsCardInfo),
+            Shortcut("Ctrl+O", R.string.show_order_dialog),
+            Shortcut("Ctrl+M", R.string.card_browser_show_marked),
+            Shortcut("ESCAPE", R.string.card_browser_select_none),
+            Shortcut("Ctrl+NUMPAD_1", R.string.gesture_flag_red),
+            Shortcut("Ctrl+NUMPAD_2", R.string.gesture_flag_orange),
+            Shortcut("Ctrl+NUMPAD_3", R.string.gesture_flag_green),
+            Shortcut("Ctrl+NUMPAD_4", R.string.gesture_flag_blue),
+            Shortcut("Ctrl+NUMPAD_5", R.string.gesture_flag_pink),
+            Shortcut("Ctrl+NUMPAD_6", R.string.gesture_flag_turquoise),
+            Shortcut("Ctrl+NUMPAD_7", R.string.gesture_flag_purple)
+        ),
+        R.string.card_browser_context_menu
+    )
 
     companion object {
         /**

@@ -40,6 +40,7 @@ import android.os.Bundle
 import android.os.Message
 import android.util.TypedValue
 import android.view.KeyEvent
+import android.view.KeyboardShortcutGroup
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -156,6 +157,8 @@ import com.ichi2.compat.CompatHelper
 import com.ichi2.compat.CompatHelper.Companion.getSerializableCompat
 import com.ichi2.compat.CompatHelper.Companion.registerReceiverCompat
 import com.ichi2.compat.CompatHelper.Companion.sdkVersion
+import com.ichi2.compat.CompatV24
+import com.ichi2.compat.CompatV24.Shortcut
 import com.ichi2.libanki.ChangeManager
 import com.ichi2.libanki.Consts
 import com.ichi2.libanki.DeckId
@@ -192,6 +195,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.ankiweb.rsdroid.RustCleanup
+import net.ankiweb.rsdroid.Translations
 import org.json.JSONException
 import timber.log.Timber
 import java.io.File
@@ -1264,6 +1268,16 @@ open class DeckPicker :
         }
     }
 
+    override fun onProvideKeyboardShortcuts(
+        data: MutableList<KeyboardShortcutGroup>,
+        menu: Menu?,
+        deviceId: Int
+    ) {
+        val shortcutGroups = CompatHelper.compat.getShortcuts(this)
+        data.addAll(shortcutGroups)
+        super.onProvideKeyboardShortcuts(data, menu, deviceId)
+    }
+
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
         if (toolbarSearchView?.hasFocus() == true) {
             Timber.d("Skipping keypress: search action bar is focused")
@@ -1388,8 +1402,20 @@ open class DeckPicker :
                     return true
                 }
             }
+            KeyEvent.KEYCODE_K -> {
+                if (event.isAltPressed) {
+                    CompatHelper.compat.showKeyboardShortcutsDialog(this)
+                    return true
+                }
+            }
             else -> {}
         }
+
+        // Show snackbar only if a modifier key is pressed and the keyCode is an unmapped alphabet key
+        if ((event.isCtrlPressed || event.isAltPressed || event.isShiftPressed) && keyCode in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z) {
+            showSnackbar(R.string.show_shortcuts_message, Snackbar.LENGTH_SHORT)
+        }
+
         return super.onKeyUp(keyCode, event)
     }
 
@@ -2411,6 +2437,29 @@ open class DeckPicker :
         /** Always open reviewer (keyboard shortcut)  */
         SKIP_STUDY_OPTIONS
     }
+
+    override val shortcuts = CompatV24.ShortcutGroup(
+        listOf(
+            Shortcut("A", R.string.menu_add_note),
+            Shortcut("B", R.string.card_browser_context_menu),
+            Shortcut("Y", R.string.pref_cat_sync),
+            Shortcut("SLASH", R.string.deck_conf_cram_search),
+            Shortcut("S", Translations::decksStudyDeck),
+            Shortcut("T", R.string.open_statistics),
+            Shortcut("C", R.string.check_db),
+            Shortcut("D", R.string.new_deck),
+            Shortcut("F", R.string.new_dynamic_deck),
+            Shortcut("DEL", R.string.delete_deck_title),
+            Shortcut("Shift+DEL", R.string.delete_deck_without_confirmation),
+            Shortcut("R", R.string.rename_deck),
+            Shortcut("P", R.string.open_settings),
+            Shortcut("M", R.string.check_media),
+            Shortcut("Ctrl+E", R.string.export_collection),
+            Shortcut("Ctrl+Shift+I", R.string.menu_import),
+            Shortcut("Ctrl+Shift+N", R.string.model_browser_label)
+        ),
+        R.string.deck_picker_group
+    )
 
     companion object {
         /**

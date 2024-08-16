@@ -36,6 +36,7 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.ActionMode
 import android.view.KeyEvent
+import android.view.KeyboardShortcutGroup
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
@@ -136,6 +137,8 @@ import com.ichi2.annotations.NeedsTest
 import com.ichi2.compat.CompatHelper
 import com.ichi2.compat.CompatHelper.Companion.getSerializableCompat
 import com.ichi2.compat.CompatHelper.Companion.registerReceiverCompat
+import com.ichi2.compat.CompatV24
+import com.ichi2.compat.CompatV24.Shortcut
 import com.ichi2.libanki.Card
 import com.ichi2.libanki.Collection
 import com.ichi2.libanki.Consts
@@ -195,7 +198,7 @@ import androidx.appcompat.widget.Toolbar as MainToolbar
  */
 @KotlinCleanup("Go through the class and select elements to fix")
 @KotlinCleanup("see if we can lateinit")
-class NoteEditor : AnkiFragment(R.layout.note_editor), DeckSelectionListener, SubtitleListener, TagsDialogListener, BaseSnackbarBuilderProvider, DispatchKeyEventListener, MenuProvider {
+class NoteEditor : AnkiFragment(R.layout.note_editor), DeckSelectionListener, SubtitleListener, TagsDialogListener, BaseSnackbarBuilderProvider, DispatchKeyEventListener, KeyboardShortcutEventListener, MenuProvider {
     /** Whether any change are saved. E.g. multimedia, new card added, field changed and saved. */
     private var changed = false
     private var isTagsEdited = false
@@ -876,6 +879,15 @@ class NoteEditor : AnkiFragment(R.layout.note_editor), DeckSelectionListener, Su
         }
     }
 
+    override fun onProvideKeyboardShortcuts(
+        data: MutableList<KeyboardShortcutGroup>,
+        menu: Menu?,
+        deviceId: Int
+    ) {
+        val shortcutGroups = CompatHelper.compat.getShortcuts(ankiActivity)
+        data.addAll(shortcutGroups)
+    }
+
     @KotlinCleanup("convert KeyUtils to extension functions")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         // We want to behave as onKeyUp and thus only react to ACTION_UP
@@ -929,6 +941,12 @@ class NoteEditor : AnkiFragment(R.layout.note_editor), DeckSelectionListener, Su
                     }
                 }
             }
+            KeyEvent.KEYCODE_K -> {
+                if (event.isAltPressed) {
+                    CompatHelper.compat.showKeyboardShortcutsDialog(ankiActivity)
+                    return true
+                }
+            }
         }
 
         // 7573: Ctrl+Shift+[Num] to select a field
@@ -940,6 +958,12 @@ class NoteEditor : AnkiFragment(R.layout.note_editor), DeckSelectionListener, Su
             selectFieldIndex(humanReadableDigit - 1)
             return true
         }
+
+        // Show snackbar only if a modifier key is pressed and the keyCode is an unmapped alphabet key
+        if ((event.isCtrlPressed || event.isAltPressed || event.isShiftPressed) && keyCode in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z) {
+            showSnackbar(R.string.show_shortcuts_message, Snackbar.LENGTH_SHORT)
+        }
+
         return false
     }
 
@@ -2351,6 +2375,19 @@ class NoteEditor : AnkiFragment(R.layout.note_editor), DeckSelectionListener, Su
         // set selection without firing selectionChanged event
         noteTypeSpinner!!.setSelection(position, false)
     }
+
+    override val shortcuts = CompatV24.ShortcutGroup(
+        listOf(
+            Shortcut("Ctrl+ENTER", R.string.save),
+            Shortcut("Ctrl+D", R.string.select_deck),
+            Shortcut("Ctrl+L", R.string.card_template_editor_group),
+            Shortcut("Ctrl+N", R.string.select_note_type),
+            Shortcut("Ctrl+Shift+T", R.string.tag_editor),
+            Shortcut("Ctrl+Shift+C", R.string.multimedia_editor_popup_cloze),
+            Shortcut("Ctrl+P", R.string.card_editor_preview_card)
+        ),
+        R.string.note_editor_group
+    )
 
     private fun updateTags() {
         if (selectedTags == null) {
