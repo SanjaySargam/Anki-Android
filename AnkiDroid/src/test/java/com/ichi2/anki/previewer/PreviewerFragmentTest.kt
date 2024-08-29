@@ -20,6 +20,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.ichi2.anki.R
 import com.ichi2.anki.RobolectricTest
 import com.ichi2.anki.browser.PreviewerIdsFile
 import com.ichi2.testutils.createTransientDirectory
@@ -43,10 +44,11 @@ class PreviewerFragmentTest : RobolectricTest() {
         ActivityScenario.launch<CardViewerActivity>(intent).use { scenario ->
             scenario.moveToState(Lifecycle.State.RESUMED)
             scenario.onActivity { previewer ->
-                assertThat("Activity is not finishing", !previewer.isFinishing)
+                val fragment = previewer.supportFragmentManager.findFragmentById(R.id.fragment_container) as PreviewerFragment
+                assertThat("Activity is not finishing", !fragment.requireActivity().isFinishing)
                 // this needs to test the keypress, not the dispatcher
                 Espresso.pressBack()
-                assertThat("Activity is finishing after back press", previewer.isFinishing)
+                assertThat("Activity is finishing after back press", fragment.requireActivity().isFinishing)
             }
         }
     }
