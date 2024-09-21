@@ -58,6 +58,9 @@ class ManageNotetypes : AnkiActivity() {
 
     private var currentNotetypes: List<ManageNoteTypeUiModel> = emptyList()
 
+    // Store search query
+    private var searchQuery: String = ""
+
     private val notetypesAdapter: NotetypesAdapter by lazy {
         NotetypesAdapter(
             this@ManageNotetypes,
@@ -115,18 +118,27 @@ class ManageNotetypes : AnkiActivity() {
             }
 
             override fun onQueryTextChange(newText: String?): Boolean {
-                val filteredList = if (newText.isNullOrEmpty()) {
-                    currentNotetypes
-                } else {
-                    currentNotetypes.filter {
-                        it.name.lowercase().contains(newText.lowercase())
-                    }
-                }
-                notetypesAdapter.submitList(filteredList)
+                // Update the search query
+                searchQuery = newText.orEmpty()
+                filterNoteTypes(searchQuery)
                 return true
             }
         })
         return true
+    }
+
+    /**
+     * Filters and updates the note types list based on the query
+     */
+    private fun filterNoteTypes(query: String) {
+        val filteredList = if (query.isEmpty()) {
+            currentNotetypes
+        } else {
+            currentNotetypes.filter {
+                it.name.lowercase().contains(query.lowercase())
+            }
+        }
+        notetypesAdapter.submitList(filteredList)
     }
 
     @SuppressLint("CheckResult")
@@ -214,8 +226,7 @@ class ManageNotetypes : AnkiActivity() {
         }
 
         currentNotetypes = updatedNotetypes
-
-        notetypesAdapter.submitList(updatedNotetypes)
+        filterNoteTypes(searchQuery)
         actionBar.subtitle = resources.getQuantityString(
             R.plurals.model_browser_types_available,
             updatedNotetypes.size,
